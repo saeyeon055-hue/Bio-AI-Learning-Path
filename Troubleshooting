@@ -1,0 +1,73 @@
+* Chem.MolFromMolFile("data/invalid.mol")
+[17:26:01] EOF hit while reading bonds
+#invalid.mol 파일에 존재하는 분자의 정보 형식이 올바르지 않음
+
+* NoneType = 파이썬에서 아무것도 없을때 고유한 NoneType으로 정의한다.
+
+* Chem.MolFromSmiles('CO(C)C')
+[17:28:19] Explicit valence for atom # 1 O, 3, is greater than permitted
+
+에러 해석
+=> # 1 O, 3 => 1번 atom이 oxygen, 3개의 bond라는 의미.
+explicit valence 즉, 산소가 가질 수 있는 bond의 수를 넘어섰기때문에 문제가 있다는 것을 알려줌.
+
+* Supplier 정의
+하나의 파일에 여러 분자에 대한 정보를 넣어 줄수 있음
+(각각의 분자를 독립된 하나의 파일에 저장하기엔 번거로움) => 이럴때 supplier를 정의할 수 있다.
+
+suppl = Chem.SDMolSupplier('data/5ht3ligs.sdf')
+#SDF file format (Mole File format과 동일)의 파일을 읽어들임.
+
+*각 명령어 해석
+mols = []
+for mol in suppl:
+    mols.append(mol)
+    print(mol.GetNumAtoms()) #분자 안에 존재하는 원자의 개수
+
+mols = []
+해석: 비어있는 리스트를 만든다.
+이유: SDF 파일에서 꺼낸 분자들을 나중에 한꺼번에 모아서 관리하기 위해 미리 준비해두는 공간
+
+for mol in suppl:
+해석: suppl(분자 묶음 공급자) 안에 들어있는 분자들을 하나씩 차례대로 꺼내서 mol이라는 이름으로 부르겠다.
+이유: SDF 파일은 분자가 여러 개 들어있는 묶음이기 때문에, for 문을 써서 첫 번째 분자부터 마지막 분자까지 반복해서 작업 수행
+
+mols.append(mol)
+해석: 방금 꺼낸 분자(mol)를 아가 만든 비어있는 리스트(mols)에 추가(append)한다.
+이유: 반복문이 끝나도 이 분자들을 계속 사용할 수 있도록 리스트에 차곡차곡 쌓아두는 것
+[참고로 python에서 append는 리스트, 배열의 맨 마지막에 새로운 요소나 데이터를 추가하는 함수]
+
+print(mol.GetNumAtoms())
+해석: 현재 꺼낸 분자(mol)가 가지고 있는 원자의 총 개수(GetNumAtoms)를 화면에 출력한다.
+이유: 각 분자가 얼마나 큰지, 원자가 몇 개인지 실시간으로 확인하기 위한 코드
+
+요약 * 파일 뭉치(suppl)에서 분자를 하나씩 꺼내(for mol in...), 내 바구니에 담고(append), 그 분자의 원자 개수를 숫자로 보여줘(print)
+
+
+* zip file을 불러올때
+import gzip #.gz로 압축되어 있는 경우, .bz2 압축되어 있는 경우에는 import bz2를 사용해야함.
+
+* "rb"를 표시해줘야 binary 파일을 읽는다는 것을 표현.
+
+* 에러가 있는 분자는 제외하고 에러가 없는 분자들만 supplier에서 읽어들여서 리스트로 만들때
+with Chem.ForwardSDMolSupplier(fp) as suppl:
+    all_mols = [m for m in suppl if m is not None]
+
+* 파일을 내보낼 때
+Chem.MolToMolFile()
+
+* canonical SMILES
+하나의 분자에 여러 SMILES code가 존재하는데 이 중 가장 긴 main chain으로 정리된 코드
+
+Chem.MolToSmiles(m2) 
+=> 기본적으로 canonical SMILES로 내보내게 됨. 
+
+* 케큘러 구조로 표현하고자할때
+Chem.Kekulize()
+
+* dir() 이용하여 Mol-type 변수가 가지고 있는 method와 attribute를 확인.
+dir(): 객체(변수, 모듈, 함수, 클래스 등)가 가진 속성(attribute)과 메서드(method) 목록을 알파벳 순서의 리스트로 반환하는 내장 함수
+
+* 분자의 성질 임의로 정의하고싶을때
+m4.SetProp("_Name","my_molecule")
+m2.SetProp("_Name","cyclobutane")
