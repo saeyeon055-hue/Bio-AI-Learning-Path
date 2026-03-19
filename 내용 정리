@@ -1,0 +1,62 @@
+from rdkit impot Chem     # rdkit 모듈에서 sub 모듈인 Chem 모듈을 부르기
+Chem.MolFromSmiles()     # SMILES에서 분자 읽어들이기
+
+RDKit에 molecule을 불러오는 방법 = SMILES, FILE
+
+Chemial File Formats
+
+화합물의 3D structure를 text file로 나타내는 방법
+
+chemical file는 아래와 같은 chemicals의 정보를 포함한다. 3D: 원자들의 3D 조직 Bond: 원자가 공유경합하는 본드 Charge: net, partial charges
+
+File formate 종류
+
+MDL mol format (SDF format)
+
+첫 두줄은 분자의 이름을 나타낸다.
+
+한줄 띄고 그 다음엔 원자와 본드의 수
+
+그 아래 줄은 분자의 3D coordinates으로 (Atoms block)에서 X, Y, Z coordiates, Atom symbol이 표기 되어있다. (수소가 포한되는지, 포함되지 않는지 확인해야함. 많은 데이터베이스가 수소를 빼놓고 정보를 가지는 경우가 많기 때문. 수소 없는 상태에서 계산을 돌리면 잘못되는 경우가 있음)
+
+그 아래 줄은 bond 정보 (Bonds block)에서 4줄이 있는데 첫줄을 해석해보자면 1210 첫번째 숫자는 first atome row number, 두번째 숫자는 second atom row number, 세번째 숫자는 bond type, 마지막 네번째 숫자는 bond stereochemistry 에 대한 정보를 담고 있기때문에 '1210'은 첫번째 원자와 두번째 원자는 단일 결합으로 이루어져있다.'로 해석할 수 있다. stereochemistry에서 6은 화학 구조식에서 dashed(빗금, 뒤로 들어간 구조)를, 1은 wedged(색칠된, 앞으로 튀어나온 구조)를 의미한다. 그리고 이러한 chiral은 두번째 줄의 원자와 본드 수에 대한 정보에서 '1'로 표기한다.
+
+Sybyl mol2 format (리간드 docking에 있어서 많이 사용되는 포멧=>partial charge에 대한 정보가 포함되어있기 때문)
+
+@MOLECULE 분자명(benzene) (atom 개수) (bond 개수) atom의 종류 atom의 charge에 대한 정보 기입 가능
+
+@ATOM 분자를 이루는 atom에 대한 정보 1 column(index)/ 2 column(atom name) / 3~5 column(X, Y, Z 정보) / 6 column(atom type) / 7 column(partia lcharge) atom type은 Tripos Atomtypes에 근거한다.(구글에 검색하면 나옴) @BOND 각 원자 사이의 본드 정보 1 colunm(index)/ 2 column(시작되는 원자의 index)/ 3 column(2 column에 연결된 원자와의 index)/ 4 column(bond 종류)
+
+mol2 format을 사용할때는 chemdraw와 같은 visualize program으로 mol2 file을 생성한다고해도 mol2 file의 atom type이 잘못 지정되어있는 경우가 많기 때문에 mol2 file을 사용할때는 atomtype이 제대로 지정되어있는지 확인해야한다.
+
+xyz format (양자화학 계산, 가오시안 계산)
+
+가오시안 같은 퀀텀 계산을 할때 주로 사용되는 퀀텀 계산같은 경우에는 covelent bond에 관한 정보는 양자역학적으로 계산이되도로하기때문에 bond information을 명시적으로 표현할필요 없다.
+따라서 원자의 정보(atomic symbol)와 x, y, z coordinate의 정보만 표현하면된다. First lne: 원자의 수 (12) Second line: 분자의 이름 (benzene) rest of the line: atomic symbol, x, y, z coordinates
+pdb format; Protein Data Bank (단백질 구조를 나타낼때, small molecule 나타낼때도 종종 사용)
+
+SMILES notation
+
+1차원 표시방법으로 3차원 구조 반영하지 않는다.
+
+Atoms: 원자들의 고유한 symbol로 나타낸다. ex) C: carbon, F: Fluorine ...
+
+Bonds: single bond (-), double bond (=), Triple bond(#), Aromatic (:)
+
+Examples Methans(CH4) => C Propane(CH3-CH2-CH3) => CCC Chloroethane(CH3-CH2-Cl) => CCCl Ethene(CH2=CH2) => C=C Bromoethene(CHBr=CH2) => BrC=C Acethelyne(CHCH) => C#C Acetonitrile(CH3CN) => CC#N
+Branches: parentheses(괄호)로 표시
+
+EXamples 2-propanol (CH3CHOHCH3) => CC(O)C # 즉, 가지로 뻗어진 원자에 괄호를 친다. Tert-butanol (CH3CCH3OHCH3) => CC(C)(O)C Isobutyric acid (CH3CHCH3COOH) => CC(C)C(=O)O # Main chain을 정하고(임의로) 그것에 대한 smiles가 생기기때문에 한 분자에 대하여 여러개의 smiles가 생성될 수 있다. 3-isopropyl-3tert-butyl-1-pentena => Main chain 정하고 branch 안에 또 다른 branch 가 생길수 있다 그럴때 괄호 안에 또다른 괄호를 넣으면된다. C=CC(C(C)C)(C(C)(C)C)CC
+Cyclic structures: ring 구조 표현
+
+C6H12의 cyclic structure의 경우 C1CCCCC1 원소 기호 뒤에 숫자를 나타내어 링으로 만나는 원자끼리 같은 숫자를 부여함으로써 두 원자가 실제 구조에서 연결됨을 표시한다.
+
+뱡항족의 경우 소문자로 원소 기호 표시하며 bond 정보는(=) 표기하지 않는다.
+
+Ring이 두개 이상일때는 숫자를 두개를 사용한다. ex) Naphthalene: c1ccc2ccccc2c1 / c12ccccc1cccc2 / c2cccc1ccccc12 Brc1c(Br)c(Br)c(Br)c(Br)c1(Br)
+
+<SMILES 요약>
+
+ring 구조가 끊어진 것으로 간주하고(ring을 임의의 구간에서 끊어버리기)
+가장 긴 chain(Main chain)을 찾는다.
+Main chain을 제외한 다른 bond는 branch로 생각하고 링이 닫히는 부분들을 숫자의 pair로 표현한다.
