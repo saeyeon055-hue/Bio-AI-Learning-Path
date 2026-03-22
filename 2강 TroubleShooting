@@ -1,0 +1,14 @@
+DataStructs.TanimotoSimilarity(fps[0],fps[2], metric=DataStructs.DiceSimilarity) # Dice similarity를 사용하겠다.
+# 오류 원인....
+
+DataStructs.TanimotoSimilarity(fps[0],fps[1], metric=DataStructs.DiseSimilarity) 와 DataStructs.FingerprintSimilarity(fps[0],fps[1], metric=DataStructs.DiceSimilarity)
+
+를 실행했을때 다른 결과가 나온 이유
+
+FingerprintSimilarity와 TanimotoSimilarity는 옵션 허용 여부가 다르게 설계되어있음.
+전자의 경우 사용자가 계산 방식(metric)을 직접 선택할 수 있도록 설계된 함수로 metric=DataStructs.DiceSimilarity라고 지정하면 내부적으로 Dice 공식을 사용하고,
+metric을 따로 안 쓰면 기본값으로 Tanimoto를 사용한다.
+(때문에 metric을 쓰지 않은 FingerprintSimilarity와 TanimotoSimilarity의 결과값이 같았던 것.)
+
+후자의 경우 오직 Tanimoto 계산만 수행하는 단일 목적 함수로 내부족으로 metric 라는 선택지를 가지고 있지 않아서,
+Dice 함수로 지정을 해도 '나는 Tanimoto만 할 수 있는데 왜 Dice를 하래....' 가 되는 것.
