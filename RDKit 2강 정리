@@ -1,0 +1,200 @@
+                                                                                                <이론>
+
+1. Chem이 의미하는 것
+Chem은 RDKit에서 가장 핵심적인 모듈. 분자를 읽고, 쓰고, 원자를 추가하거나 삭제하는 등 '화학적인 연산'에 필요한 거의 모든 기능이 이 안에 들어있다.
+
+EX)
+
+Chem.MolFromSmiles(): 스마일즈로 분자 만들기
+
+Chem.AddHs(): 수소 원자 추가하기
+
+Chem.MolToMolBlock(): 분자 데이터를 텍스트로 바꾸기
+
+2. 왜 항상 앞에 Chem.을 붙이는가?
+파이썬의 '이름 공간(Namespace)' 규칙 때문.
+
+만약 Chem.을 붙이지 않고 그냥 AddHs()라고만 쓰면, 파이썬은 이 함수가 RDKit 것인지, 아니면 다른 라이브러리(예: Pandas나 Custom 함수) 것인지 알 수가 없다.
+
+EX)
+
+from rdkit import Chem: "RDKit에서 Chem이라는 도구함을 가져오겠다"는 선언.
+
+Chem.AddHs(): "Chem 도구함 안에 있는 AddHs라는 도구를 꺼내 쓰겠다"는 뜻.
+
+
+# m2에서 수소를 제거한 분자를 MolBlock(Mol file[MDL mol format])으로 지정한다.
+print(Chem.MolToMolBlock(Chem.RemoveHs(m2)))
+
+
+# MolToMolBlock은 결과물을 화면(텍스트)에 뿌려주지만, MolToMolFile은 결과물을 컴퓨터 파일(.mol)로 저장하는 함수.
+=> Chem.MolToMolFile은 다음과 같은 형식으로 명령해야한다. Chem.MolToMolFile(분자, "data/파일명")
+print(Chem.MolToMolFile(Chem.RemoveHs(m2)))  ===>>> Error
+print(Chem.MolToMolFile(m2,"data/mol_m2")
+
+
+Chemical FingerPrints
+
+분자 구조를 정해진 차원의 정수의 벡터로 변환하는 방법
+목적: 동일하거나 비슷한 분자를 빠르게 검색하기 위해서 많이 사용된다.
+컴퓨터를 이용해서 2차원의 분자 구조나 1차원 텍스트를 비교하는 것보다 1차원 정수 벡터를 비교하는 것이 빠르다.
+
+FingerPrints 종류
+
+1. MACCS Key
+
+자주 관찰되는 분자의 부분 구조를 미리 정한 후에 그 구조가 존재하는지 아닌지를 0과 1로 표현
+
+2. Morgan Algorithm
+
+분자의 구조를 정수로 표현하기 위한 방법 Step 1. 각 원자에 연결된 원자의 개수를 부여한다. (connectivity) Step 2. 각 원자들에 연결된 원자의 connectivity 값을 모두 합한 값을 그 원자의 connectivity 값으로 다시 부여한다. Step 3. 2번 과정을 반복한다. Step 4. 각 원자가 가지는 값이 더이상 변화하지 않을 때 반복을 멈춘다.
+
+3. ECFP
+
+Morgan Algorithm과 유사. 원자번호, mass, charge 등의 정보를 가지고 하나의 Hash values를 가지게 된다.
+
+Hash function: 임의의 길이의 데이터를 고정된 길이의 데이터로 매핑하는 함수이며 여기서 얻어지는 값을 해시 값, 해시 코드, 해시 체크섬 또는 간단하게 해시라고한다.
+
+- 해시 함수의 목적
+
+대용량의 데이터가 저장되어 있을 때, 특정 데이터를 찾거나 동일한지 아닌지를 매우 빠르게 판단할 수 있다.
+해시 값이 동일하지 않으며 두 파일이 다른 파일이다.
+그러나 해시 값이 같더라도 두 파일이 서로 다를 가능성이 존재한다. (해시 충돌. collision)
+해시 값의 사이즈가 작으면 검색 속도는 빠르지만 충돌 확률은 증가한다.
+반대로 해시 값의 사이즈가 크면 충돌 확률은 낮아지지만 검색의 속도는 느려진다.
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                <실습>
+
+
+# m이 None(분자 문제가 있을 때)이 아니면, 즉 분자에 문제가 없으면 supple이라는 파일에서 하나씩 꺼내서 mols라는 리스트에 저장해라
+mols = [m for m in suppl if m is not None]
+
+# 파이썬의 내장 함수로, 객체에 담긴 요소의 개수(길이)를 의미한다.
+len(mols)
+
+
+
+## 분자들의 리스트가 있을때, 파일로 저장하기 ##
+
+with Chem.SDWriter("mols.sdf") as fout:
+  for m in mols:
+    fout.write(m)
+
+with Chem.SDWriter("mols.sdf") as fout:
+=> 의미: mols.sdf라는 이름의 SDF 파일을 새로 만들고, 이를 작성할 도구(Writer)를 실행해 fout이라는 별명으로 부른다.
+=> 핵심: with 문법 덕분에 작업이 끝나거나 에러가 나도 파일을 자동으로 닫고 저장한다.
+
+for m in mols:
+=> 의미: mols라는 묶음(리스트나 Supplier 객체 등) 안에 들어있는 분자 객체들을 하나씩 꺼내어 m이라는 변수에 담아 반복한다.
+
+fout.write(m)
+=> 의미: 꺼내진 분자 m을 아까 열어둔 파일(fout)에 실제로 기록(Write)한다.
+
+
+
+## 수소를 붙여보자! ##
+
+Chem.AddHs 함수로 수소를 붙인다.
+=> 주의할점: AddHs를 사용하면 새로운 분자를 리턴해야한다. 즉 새로운 지정 필요
+
+
+# 이렇게 실행하면 m1은 바뀌지 않고 그대로 유지. 새로운 변수에 새로운 분자를 지정해야함.
+Chem.AddHs(m1)
+
+# 새로운 변수에 새로운 분자 지정 후 Mol file로 내보내기
+m2 = Chem.AddHs(m1)
+print(Chem.MolToMolBlock(m2))
+
+# 수소를 지울 때는 Chem.RemoveHs 함수를 사용
+Chem.RemoveHs(m2)
+
+
+* 일반적으로 수소는 Mol file에 저장되어있지 않아서 수소를 붙여도 정확한 좌표(x,y,z)가 설정 안되어있다.
+=> 따라서 수소의 좌표를 지정해줘야함
+
+
+## 분자의 3차원 구조 만들기 ##
+3차원 구조를 얻기위한 함수 이름: EmbedMolecule => AllChem이라는 모듈에 존재한다. (Chem 모듈의 Sub 모듈이 AllChem 모듈)
+
+# AllChem 안에는 더 다양하고 advanced 방법들이 들어 있음.
+from rdkit.Chem import AllChem
+
+# Error가 나지 않으면  0이 출력된다.
+AllChem.EmbedMolecule(m2)
+
+# 3차원 구조로 불러들이고 수소의 좌표가 제대로 출력되는지 확인
+# 여기서 m2 위치에 있는(내가 3차원 구조를 확인하고 싶은) 분자는 수소가 포함되어있는 분자여야한다. (Chem.AddHs())
+print(Chem.MolToMolBlock(m2))
+
+
+
+
+## RDKit fingerprints  ## (=Topological Fingerprints)
+
+# RDKit fingerprint 불러내는 코드
+from rdkit import DataStructs
+
+
+# Mol type의 변수로부터 fingerprints를 만드는 방법
+Chem.RDKFingerprint() for ? in ??
+fps = [Chem.RDKFingerprint(m) for m in ms]
+fp1 = Chem.RDKFingerprint(m1)
+
+
+# 유사도 계산
+
+DataStructs.FingerprintSimilarity( , )
+DataStructs.TanimotoSmilarity( , )
+DataStructs.TanimotoSimilarity(fps[0],fps[1])
+
+유사도는 일반적으로 TanimotoSimilarity 이용 (FingerprinSimilarity에서 기본값은 TanimotoSimilarity)
+두개의 벡터가 있을때 (0과 1의 교집합의 개수)/(합집합의 개수)
+
+
+# 벡터에서 비트를 하나씩 꺼내서 idx와 x를 동시에 반환, 마지막 위치의 idx 출력
+for idx, x in enumerate(fps[0]):
+    if x==1:
+        print(idx, x)
+print("Last digit: ", idx)
+
+
+
+## MACCS Keys ##
+
+
+from rdkit.Chem import MACCSkeys
+
+# Fingerprint 생성
+fps = [MACCSkeys.GenMACCSKeys(x) for x in ms]
+
+# MACCS 기반으로 (166차원의 0/1 벡터를 기반으로) Tanimoto similarity 계산
+DataStructs.FingerprintSimilarity(fps[0],fps[1])
+
+
+## Morgan Fingerprints (ECFP) ##
+
+# ECFP를 사용할때는 AllChem이 필요하다.
+from rdkit.Chem import AllChem
+
+# ECFP는 radius를 정해야한다. (각 중심 원자에서 얼만큼 떨어진 이웃한 원자까지 고려한지)
+# 각 atom을 기준으로 바로 옆에 있는 것만 볼건지 (radius=1), 바로 옆에 있는 거랑 그 옆에 있는 것을 볼건지 (radius=2)
+# radius=1, ECFP2    /    radius=2, ECPF4
+fpgen = AllChem.GetMorganGenerator(radius=2)
+fps = [fpgen.GetSparseCountFingerprint(x) for x in ms]
+
+=>분자 내 특징들의 위치와 발생 횟수(Count)를 메모리 효율적(Sparse)으로 추출해라
+
+# Morgan fingerprint를 정수의 리스트가 아니라 Bit vector로 얻기 위해서 아래의 코드를 사용한다.
+fp1 = fpgen.GetFingerprint(m1)
+
+# 비트 수를 1024로 바꿔주려면 아래의 단계로 진행.
+fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=1024)
+fps = [fpgen.GetFingerprint(x) for x in ms]
+
+# 기본적으로 2048 비트를 사용할 때는 아래와 같은 명령어를 사용
+fpgen = AllChem.GetMorganGenerator(radius=2)
+fp1 = fpgen.GetFingerprint(m1) # 리스트 없을 때
+or
+fps = [fpgen.GetFingerprint(x) for x in ms] # 리스트 있을 때
