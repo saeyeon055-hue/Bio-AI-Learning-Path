@@ -1,0 +1,53 @@
+fps[0].GetNonzeroElements()
+
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+Input In [25], in <cell line: 1>()
+----> 1 fps[0].GetNonzeroElements()
+
+AttributeError: 'ExplicitBitVect' object has no attribute 'GetNonzeroElements'
+
+
+// Troubleshooting //
+
+fps[0]의 벡터 파일로 사용할 수 있는 method 목록에 GetNonzeroElements가 없기 때문
+
+이는 fpss[0]와 fps[0]가 다른 형식의 벡터로 저장되어있기 때문일 것으로 생각..
+
+=> 맞음 아래 설명 참고
+
+용어 정리
+방식(Representation)
+ExplicitBitVect와 UlnSparseInVect는 fingerprints를 표현하는 데이터 타입(형식)
+
+메서드(Method)
+fpgen.GetFingerprint()와 fpgen.GetCountFingerprint()는 특정 형식의 데이터를 만들어내기 위해 호출하는 '함수(메서드)'
+
+왜 사용 가능한 method가 다른가?
+=> 데이터의 '성질'이 다르기 때문
+
+ExplicitBitVect (비트 방식): 0 또는 1만 가지기 때문에, GetNumOnBits(1인 개수), SetBit(특정 칸을 1로 만들기)처럼 '비트'를 다루는 용어들이 나타납니다.
+
+UIntSparseIntVect (카운트 방식): 0, 1, 2, 3... 처럼 개수를 가지기 때문에, 비트처럼 단순히 켜고 끄는 게 아니므로 GetTotalVal(모든 칸의 숫자 합계), GetNonzeroElements(0이 아닌 칸들의 정보)처럼 '수치'와 '양'을 다루는 용어들이 나타남.
+
+
+# 0이 아닌 칸들의 정보
+fpss[0].GetNonzeroElements()
+
+=> 출력값이 강의와 다른 이유
+
+// Troubleshooting //
+
+1. FingerprintGenerator와 GetMoranFingerprint의 차이때문
+
+fingerprints(ID) 범위 차이
+
+강의(구버전, GetMorganFingerprint): 기본적으로 비트 크기 제한이 없는(Unbound) 정수 값을 생성. (분자의 각 조각에 고유한 정수 번호를 무작위로 부여하는 방식)
+
+나(최신버전, GetMorganGenerator): 별도로 설정하지 않으면 기본적으로 2048비트(fpSize=2048)라는 고정된 크기 안에서 번호를 매김. 때문에 0부터 2047번 사이의 방에 조각들을 차곡차곡 채워 넣는 방식이라 숫자가 작고 깔끔함.
+
+2. 고정 크기(Folded) vs 가변 그키 강의: 조각이 발견될 때마다 무조건 모든 조각에 고유 번호를 부여. 이론산 번호의 범위가 무한대
+
+나: rdFingerprintGenerator.GetMorganGenerator(radius=3)는 내부적으로 해싱과정을 거쳐 수많은 화학 구조 조각들을 2048개의 방 안에 골고루 나눠 담는 과정에서 번호가 재할당됨.
+
+3. 결과의 의미는 같다.
