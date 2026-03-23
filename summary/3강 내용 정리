@@ -1,1 +1,61 @@
+# Picking diverse molecules from a library using fingerprints
+fingerprints는 분자를 숫자의 리스트 혹은 비트 벡터(0 혹은 1) 리스트로 변환해서 서로간의 유사도를 빠르게 계산하는 도구
+
+
+# MaxMinPicker 명령어
+from rdkit import Chem
+from rdkit.Chem import rdFingerprintGenerator
+fpgen = rdFingerprintGenerator.GetMorganGenerator(radius=3)
+from rdkit import DataStructs
+from rdkit.SimDivFilters.rdSimDivPickers import MaxMinPicker
+
+  ## SimDivFilter.rdSimDivPickers => similarity or diversity를 기반으로 여러 분자들을 pick 해주는 모듈
+
+
+# gzip에서 분자를 읽을 때 Chem.SDMolSupplier가 gzㅇ르 직접 처리하지 못하기 때문에 gzip.open 과정이 필요
+
+with gzip.open("data/actives_5ht3.sdf.gz") as fin:     # gzip.opn으로 압축 해치 후 파일 스트림 (fin)에 저장.
+    with Chem.ForwardSDMolSupplier(fin) as suppl:      # fin을 ForwardSDMolSupplier에 전달하여 SDF 구조 데이터를 순차적으로 읽어서 분자 객체로 변환한다.(suppl).
+      mols = [m for m in suppl if m is not None]       # 오류가 없는 유효한 분자 객체(not None)들만 골라 mols 리스트에 최종 저장.
+
+* fin : (변수) 파일 스트림, 압축된 파일을 읽을 수 있는 통로(스트림)
+* suppl : (변수) 데이터 공급자, fin 통로를 통해 들어오는 데이터를 RDKit이 이해할 수 있는 분자(Mol) 객체로 하나씩 변환해주는 '공급 장치'. 압축 풀린 텍스트 데이터를 하나씩 가져와 분자로 변환해서 넘겨주는 역할
+* mols : (리스트) 최종 저장소
+
+
+
+++ 추가 설명 ++
+
+Chem.ForwardSDMolSupplier는 기본적으로 SDF 형식을 읽기 위한 전용 도구 (.sdf 파일 혹은 .mol 파일)
+
+다른 형식을 읽고 싶을땐?
+
+SMILES 형식(.smi) => Chem.SmilesMolSupplier
+PDB 형식 (.pdb) => Chem.MolFromPDBFile
+
+여기서 SMILES와 PDB를 읽을 때 다른 명령어를 사용하는 이유는
+Supplier는 여러 개(list)를 줄지어 읽을 때 사용하고, MolFrom...은 딱 하나(Single)를 읽을 때 쓰기 때문!
+
+SDF 혹은 SMILES(.smi) 파일은 수백, 수천 개의 화합물을 한 파일에서 관리하니까 공급자(Supplier)가 필요한 반면 PDB 파일은 보통 단백질 하나나 복합체 하나를 정밀하게 묘사하기때문에, 파일 하나 당 분자 하나인 경우가 대다수. 만약 PDB도 여러 개라면 supplier를 사용해야한다. (다만 실무에서는 드문 편.)
+
+
+
+
+# 180개 분자에서 최대한 다양하게 10개의 분자 추려내는 방법
+
+fps = [fpgen.GetFingerprint(x) for x in mols]
+fps[0]
+ ---> <rdkit.DataStructs.cDataStructs.ExplicitBitVect at 0x1bee0c01540>     # ExplicitBitVector로 변환
+
+# 사용할수 있는 method가 궁금할 때 dir() 함수를 이용한다.
+dir(fpss[0])
+
+## 추가 정보
+dir(fps[0]): 전체 method을 알고싶을 때
+help(fps[0].GetNumOnBits) : dir()에서 알게된 method 중 GetNumOnBits에 대한 상세 설명과 사용법을 알고 싶을 때
+
+
+# ____로 시작하는 것들: 파이썬 내부 처리를 위한 특수 method. (보통은 직접 쓸 일이 많지 않음)
+# 일반 단어로 시작하는 것들: 우리가 실제로 사용할 수 있는 기능.
+    # 예를 들어, GetNumOnBits가 목록에 있다면 fps[0].GetNumOnBits()라고 써서 "1로 표시된 비트가 몇 개인지" 확인할 수 있음.
 
