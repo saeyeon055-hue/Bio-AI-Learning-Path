@@ -91,4 +91,123 @@ len(x)
   
 < 2 강 >
 
-  
+# Smiles로 분자 만들기
+Chem.MolFromSmiles()
+
+# 수소 원자 추가하기
+Chem.AddHs()
+
+# 분자 데이터를 텍스트로 바꾸기
+Chem.MolToMolBlock()
+
+
+# Chem.ForwardSDMolSupplier() 는 SD 파일(.sdf)을 처음부터 하나씩 끝까지 순차적으로 읽어오는 도구.
+  SDMolSupplier와 다르게 단방향성이다. (앞에서 쭉읽어들이기만 가능하고 특정 인덱스로 바로 이동은 불가능)
+fp = gzip.open("data/actives_5ht3.sdf.gz")
+suppl = Chem.ForwardSDMolSupplier(fp)
+
+
+## m이 None(분자 문제가 있을 때)이 아니면, 즉 분자에 문제가 없으면 supple이라는 파일에서 하나씩 꺼내서 mols라는 리스트에 저장해라
+mols = [m for m in suppl if m is not None]
+
+
+# 분자들의 리스트가 있을때, 파일로 저장
+with Chem.SDWriter("mols.sdf") as fout:  => mols.sdf라는 이름의 SDF 파일을 새로 만들고, 이를 작성할 도구(Writer)를 실행해 fout이라는 변수로 지정
+  for m in mols:                         => mols라는 묶음(리스트나 Supplier 객체 등) 안에 들어있는 분자 객체들을 하나씩 꺼내어 m이라는 변수에 담아 반복
+    fout.write(m)                        => 꺼내진 분자 m을 아까 열어둔 파일(fout)에 실제로 기록(Write)
+
+
+
+# 수소를 붙일 때
+=> 주의할점: AddHs를 사용하면 새로운 분자를 리턴하니, 새로운 변수를 지정해주어야한다.
+y = Chem.AddHs(x)
+
+# 수소를 지울 때
+Chem.RemoveHs(x)
+
+
+# MolToMolBlock은 결과물을 화면(텍스트)에 뿌려주지만, MolToMolFile은 결과물을 컴퓨터 파일(.mol)로 저장하는 함수.
+Chem.MolToMolFile은 다음과 같은 형식으로 명령해야한다. Chem.MolToMolFile(분자, "data/파일명")
+Chem.MolToMolFile(m4, "data/test.mol") # m4를 test.mol 파일로 저장하겠다.
+Chem.MolToPDBFile(m4, "data/test.pdb") #m4를 test.pdb 파일로 저장하겠다.
+
+
+
+# 분자의 3차원 구조 만들기 (EmbedMolecule => AllChem이라는 모듈에 존재)
+from rdkit.Chem import AllChem 
+AllChem.EmbedMolecule(x)      # Error가 나지 않으면  0이 출력된다.
+
+
+# RDKit fingerprints (=Topological Fingerprints)
+from rdkit import DataStructs
+
+# Mol type의 변수로부터 fingerprints를 만드는 방법
+Chem.RDKFingerprint(x) for y in z
+
+  ## fps = [Chem.RDKFingerprint(m) for m in ms]
+
+# 복잡한 명령문
+for idx, x in enumerate(fps[0]):
+    if x==1:
+        print(idx, x)
+print("Last digit: ", idx)
+
+fps[0]: 여러 개의 핑거프린트가 담긴 리스트(fps) 중 첫 번째 분자의 데이터
+enumerate(): 데이터를 하나씩 꺼낼 때, 그 데이터가 몇 번째인지 알려주는 번호(idx)와 실제 값(x)을 동시에 반환
+
+idx: 핑거프린트 내의 비트 위치(번호)
+x: 해당 위치의 비트 값(보통 0 또는 1)
+if x == 1: : 꺼낸 비트 값(x)이 1인지 확인(해당 분자에 특정 부분 구조(Substructure)가 존재하는가?)
+
+print(idx, x) : 조건이 참일때, 비트 번호(idx)와 값(x) 출력
+
+print("Last digit: ", idx) : 마지막으로 확인한 인덱스 번호(idx)가 무엇인지 (여기서 출력된 값+1 이 전체 개수를 의미)
+
+
+
+# 유사도 계산
+DataStructs.FingerprintSimilarity(x,y)
+DataStructs.TanimotoSmilarity(x,y)
+
+
+
+# MACCS Keys
+from rdkit.Chem import MACCSkeys
+fps = [MACCSkeys.GenMACCSKeys(x) for x in ms]     # Fingerprint 생성
+
+  ## MACCS Key 기반 Tanimotosimilarity 계산
+    DataStructs.FingerprintSimilarity(fps[0],fps[1]) # Taniimoto similarity
+
+
+# Morgan Fingerprints (ECFP)
+from rdkit.Chem import AllChem
+fpgen = AllChem.GetmorganGenerator(radius=n)
+fps = [fpgen.GetSparseCountFingerprint(x) for x in ms]
+
+## radius=2 일때 분자 내 특징들의 위치와 생 횟수(Count)를 메모리 효율적(Sparse)으로 추출해라
+  fpgen = AllChem.GetMorganGenerator(radius=2)
+  fps = [fpgen.GetSparseCountFingerprint(x) for x in ms]
+
+
+  ## 비트 수 바꾸고 싶을 때
+  1. 생성기 단계에서 1024비트로 고정
+    fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=1024)
+
+  2. 이제 이 함수는 1024비트 비트 벡터를 반환합니다.
+    fps = [fpgen.GetFingerprint(x) for x in ms]
+
+# 기본적으로 2048 비트 사용할 때
+fpgen = AllChem.GetMorganGenerator(radius=2)
+fp1 = fpgen.GetFingerprint(m1)     # 리스트 없을 때
+fps = [fpgen.GetFingerprint(x) for x in ms]   # 리스트 있을 때
+
+
+< 3 강 >
+
+< 4 강 >
+< 5 강 >
+< 6 강 >
+< 7 강 >
+< 8 강 >
+< 9 강 >
+< 10 강 >
