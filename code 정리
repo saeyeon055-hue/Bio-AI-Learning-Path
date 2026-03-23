@@ -1,0 +1,94 @@
+< 1 강 >
+
+# A 모듈에서 sub 모듈인 B 모듈을 불러오겠다.
+from A import B
+
+  ## rdkit 모듈에서 sub 모듈인 Chem 모듈을 불러오겠다.
+from rdkit import Chem
+
+
+## 변수 지정
+m = Chem.MolFromSmiles('Cc1ccccc1')
+
+  
+# 텍스트 출력(rdkit에서는 메모리 주소 출력)
+print(x)
+
+
+# 시각적인 구조를 확인하고 싶다면 x만 입력하고 실행
+x
+
+
+# 변수의 유형 확인
+type(x)
+
+
+# Suppl
+하나의 파일에 여러 분자에 대한 정보를 넣어 줄수 있음(각각의 분자를 독립된 하나의 파일에 저장하기엔 번거로움)
+=> 이럴때 supplier를 정의.
+=> RDKit이 이해할 수 있는 분자(Mol) 객체로 변환해주는 공급 장치 역할
+suppl = Chem.SDMolSupplier('suppl로 보낼 데이터가 저장되어있는 위치')
+
+  
+## SDF file format (Mole File format과 동일)의 파일을 읽어들임.
+suppl = Chem.SDMolSupplier('data/5ht3ligs.sdf')
+
+
+## 분자 안에 존재하는 원자의 개수 (GetNumAtoms())
+  mols = []           # 비어있는 리스트를 만든다. (SDF 파일에서 꺼낸 분자들을 나중에 한꺼번에 모아서 관리하기 위해 미리 준비해두는 공간)
+for mol in suppl:     # suppl(분자 묶음 공급자) 안에 들어있는 분자들을 하나씩 차례대로 꺼내서 mol이라는 이름으로 부르겠다. (SDF 파일은 분자가 여러 개 들어있는 묶음이기 때문에, for 문을 써서 첫 번째 분자부터 마지막 분자까지 반복해서 작업 수행)
+    mols.append(mol)  # 방금 꺼낸 분자(mol)를 아가 만든 비어있는 리스트(mols)에 추가(append)한다. (반복문이 끝나도 이 분자들을 계속 사용할 수 있도록 리스트에 차곡차곡 쌓아두는 것)
+    print(mol.GetNumAtoms())  # 현재 꺼낸 분자(mol)가 가지고 있는 원자의 총 개수(GetNumAtoms)를 화면에 출력한다.
+
+
+# 압축 파일이 있는 경우
+  import (file format)
+
+## .gz으로 압축되어 있는 경우, .bz2로 압축되어 있는 경우
+  import gzip
+  import bz2
+
+
+## gz 으로 압축된 분자 파일을 읽는다. "rb"를 표시해줘야 binary 파일을 읽는다는 것을 표현.
+fp = gzip.open('data/actives_5ht3.sdf.gz', 'rb') 
+
+
+## 에러가 있는 분자는 제외하고 에러가 없는 분자들만 supplier에서 읽어들여서 리스트로 만들겠다.
+with Chem.ForwardSDMolSupplier(fp) as suppl:
+    all_mols = [m for m in suppl if m is not None]
+
+
+# 파일에 존재하는 의 길이(개수)
+len(x)
+
+
+# 파일 - RDKit 객체
+  1. Chem.MolFromMolFile (가져오기)
+  내 컴퓨터에 저장된 .mol 파일을 읽어서 파이썬에 분자 객체 (Mol Object)로 만드는 함수
+  ## mol = Chem.MolFromMolFile('data/mol_2')
+
+  2.Chem.MolToMolFile (내보내기)
+  파이썬 메모리에 있는 분자 객체를 다시 .mol 형식의 텍스트 파일로 저장하는 함수
+  ## Chem.MolToMolFile(분자 객체가 저장된 변수 이름, "저장할 파일위치, 이름")
+  Chem.MolToMolFile(m4, "data/test.mol")
+  Chem.MolToPDBFile(m4, "data/test.pdb")
+
+
+# MolToSmiles에 넣으면 모두 canonical structure로 변환되는데 이를 케큘러 구조로 표현하고 싶을 때
+  Chem.MolToSmiles(Chem.MolFromSmiles('C1=CC=CN=C1'))     # canonical structure로 변환
+
+  Chem.Kekulize(m4)                                       # 케큘러 구조로 변환
+  Chem.MolToSmiles(m4, kekuleSmiles=True)                 # 케큘러 구조로 변환
+
+
+# 분자의 성질을 임의로 정의 (Setprop)
+  x.SetProp("정의할 성질", "정의할 내용/명칭")
+
+  ## m4와 m2의 이름을 my_molecule로 정의
+  m4.SetProp("_Name","my_molecule")
+  m2.SetProp("_Name","cyclobutane")
+
+  
+< 2 강 >
+
+  
