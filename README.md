@@ -13,3 +13,8 @@ A. 타겟 발굴 및 기전 연구 중심 (Target Discovery)
 
 B. 후보물질 설계 및 최적화 중심 (Lead Optimization
 (분자생성모델) -> (분자 그래프 기반 AI)
+
+
+프로젝트 명: RDKit 기반 화학정보학 학습 및 분석 도구
+
+학습 내용: 분자 시각화, Descriptors 계산, machine learning
