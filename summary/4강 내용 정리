@@ -1,0 +1,225 @@
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import AllChem
+
+
+# 회귀 모델을 만들기 위해 가장 많이 사용되는 머신러닝 패키지 중에 하나인 scikit-learn 설치
+!conda install -c conda-forge scikit-learn -y 
+
+
+## JACK2 단백질의 Protein Assay 결과를 예측하는 Random Forest 모델 만들기
+
+
+# 파일 읽어들이기
+smiles_list = []    # 비어있는 list 정의
+pIC50_list = []    # 비어있는 list 정의
+with open("data/jak2_data.csv") as fp:            # data 폴터 안의 jak2_data.csv 파일을 읽기 모드로 열고, 이 파일 객체를 fp라는 이름으로 부르겠다.
+    for l in fp.readlines()[1:]:                  # fp.resdlines() => 파일의 모든 줄을 읽어와 리스트로 만든다. [1:] => 리스트의 두번째 줄(인덱스 1부터_두번째부터 끝까지 가져온다. (보통 첫 번째줄은 컬럼명인 헤이므로 제외)
+        smiles, pIC50 = l.strip().split(',')      # l.split() => 줄 끝의 줄바꿈 문자(\n)나 공백 제거. .split(',') 쉼표(,)를 기준으 문자열 자르기 smiles, pIC50 = ... => 자른 두 값을 각각 smiles와 pIC50 변수 나누어 저장. 
+        pIC50 = float(pIC50)                      # pIC50는 실수 값이기 때문에(현재 문자로 저장되어있음) , 실수 값으로 변환
+        smiles_list.append(smiles)                # smiles에 해당하는 값을 smiles_list에 하나씩 저장
+        pIC50_list.append(pIC50)                  # pIC50에 해당하는 값을 pIC50_list에 하나씩 저장
+
+
+
+# 0번 부터 2번 직전(1번까지)를 의미
+smiles_list[0:2]
+
+
+
+## SMILES를 Descriptor로 변환
+    => 1911개의 분자를 1911개의 벡터(숫자 리스트)로 변환
+
+desc = calc_descriptors(Chem.MolFromSmiles("c1ccccc1"))
+
+
+# 195개의 실수(float)로 된 descriptor list로 변환됨.
+len(desc)
+
+
+<TIP : tpdm 모듈을 사용하면 progress bar를 볼 수 있다.>
+
+설치 코드: ! conda install -c conda-forge tqdm -y 
+여기서 !는 파이썬이 아닌 프롬프트에서 실행하라는 의미
+
+# tpdm 모듈 사용 방법
+from tqdm import tqdm
+
+dsec_list = []
+for smiles in tqdm(smiles_list):     # tqdm 을 사용함으로써 progress 상황 알 수 있다.
+    mol = Chem.MolFromSmiles(smiles) #SMILES -> Mol type으로 변경
+    dsec = calc_descriptors(mol)
+    dsec_list.append(dsec)
+
+## 전체 리스트에 담긴 '분자의 개수' (예: 1912개)
+len(dsec_list)
+
+##  첫 번째 분자(dsec_list[0]) 하나가 가진 'Descriptor(특성)의 개수'
+len(dsec_list[0])
+
+
+# sickit learn 에서 다루기 위해서는 NumPy array로 바꿔주는 것이 좋다.
+# NumPy(Numeric Python) array는 수학적/과학적 연산을 빠르게하기 위해서 사용되는 rdkit의 외부 모듈
+
+import numpy as np
+
+# 1911개의 분자 객체에 대하여 195차원 벡터를 가지고 있기 때문에, 행렬 형태로 변환해 다루기 위함. 
+# 현재 desc_list는 195차원의 리스트를 1911개 가지고 있다.
+
+
+X = np.array(dsec_list) # 일반적으로 인풋 데이터 전체를 X 로 표현함. Input Feature
+
+X = 일반적으로 인풋 데이터 전체를 X로 표현 (Input Feature)
+y = 예측하고자하는 타겟값
+
+
+
+# 예측하고자하는 목적 값을 y로 바꿔줌.
+y = np.array(pIC50_list)
+
+
+
+<< 머신 러닝 >>
+
+머신 러닝과정은 기본적으로 아래와 같은 5단계로 이루어지며 추가적인 확인(그래프,mse, mae, r2)이 이어질 수 있다.
+
+1. 알고리즘 불러오기(모델 생성하기)
+2. 학습 데이터와 검증 데이터 준비하기
+3. 모델 학습시키기
+4. 검증하기
+5. 예측 값과 실제값 비교하기
+
+
+
+1. Random Forest 모델/알고리즘 (Machine Learing 알고리즘)
+
+#
+sklearn.ensemble.RandomForestRegressor(n_estimators=n,...기타 옵션들)
+=> 여기서 argument에 해당하는 n_estimators=n 를 입력하지 않으면 default 모델이 생성된다.
+
+##
+from sklearn.ensemble import RandomForestRegressor as RFR
+
+# default 모델 생성
+# instance 를 생성할 때, 아무런 argument(인자 혹은 숫자; 괄호 안에 적는 거) 를 주지 않으면 default 옵션으로 생성됨.
+my_model = RFR()
+
+
+2. 학습 데이터와 검증 데이터 준비
+학습 데이터와 검증 데이터를 분리해주어야한다.
+
+# 이때 사용하는 코드
+from sklearn.model_selection import train_test_split
+
+# train 데이터와 test 데이터 분리 코드
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = n, random_state = m)
+
+## train 데이터와 test 데이터를 분리하는 방법
+# 아래의 train_test_split()의 return 값은 X-train, X-test, y_train, y_test
+X_train, X_test, y_train, y_test = train_test_split(X, y,test_size = 0.2, random_state = 42)
+
+=> test_size = n : 검증용으로 이 중에서 몇%를 사용할 것인지 (100n% ; n=0.2 => 20%를 test로 사용)
+
+=> random_state = m : 전체 X를 랜덤하게 어떤거는 train(학습)으로, 어떤거는 test(검증)으로 쓸건지를 분리할 것이기 때문에 매번 분리할때마다 달라지는데, 이걸 분리할때마다 달라지지 않게 하려면 m에 해당하는 숫자를 고정시켜주면 된다.
+
+
+
+3. 모델 학습
+
+# fit이라는 함수를 통해 텅빈 리스트를 학습시킨다.
+my_model.fit(X_train, y_train)
+
+
++ 추가 정보 ++
+
+scikit-learn의 fit 함수가 작동할 때는 파이썬 수준에서 반복문을 돌리는게 아니라, 내부적으로 최적화된 C++나 Cython 코드로 한꺼번에 실행되기 때문에 이때는 verbose 옵션을 활용할 수 있다.
+
+모델 생성 시 verbose=1 또는 2 설정
+(숫자가 클수록 자세히 출력)
+verbose = 0  (출력하지 않음 X)
+verbose = 1  (정보를 상세하게 출력함)
+verbose = 2  (정보를 함축적으로 출력함)
+
+my_model = RFR(n_estimators=100, verbose=2)
+
+<이때 n_estimators=n 에 해당하는 argument 생략하고 verbose만 적어도 실행된다.>
+my_model = RFR(verbose=2)
+
+## 모델 학습
+my_model.fit(X_train, y_train)
+
+
+4. 학습 끝, 검증 시작
+
+# 예측을 시킬 때
+y_pred = my_model.predict(X_test)
+
+
+5. 예측 값과 실제 값 비교
+
+# 그림을 그리기 위해 필요한 모듈
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+!pip install --upgrade matplotlib-inline
+
+---------------- 위에 설치후 아래에 테스트용 그래프 입력해보고 오류 발생하면 아래의 matplotlib 설정 객체에 강제로 _get method 심기-------------------------------------------
+import matplotlib
+# matplotlib 설정 객체에 강제로 _get 메서드를 심어줍니다.
+if not hasattr(matplotlib.rcParams, '_get'):
+    matplotlib.rcParams._get = lambda key: matplotlib.rcParams[key]
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+# 테스트용 그래프
+plt.scatter([1, 2, 3], [4, 5, 6])
+plt.show()
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+<regression model은 실수값을 예측하는 것>
+# scatter plot 그래프 그리는 함수
+plt.scatter(y_test, y_pred)
+
+
+정량 검증을 위해서 Mean Squared Error(성능 평가)를 계산해볼 수 있다
+  > {(실제값)-(예측값)}^2
+
+# Mean Squared Error 불러오고 실행하기 (아래의 명령어 중 맨 마지막 'as mse'는 모듈 이름이 길어서 내가 새로 정의하는 것.)
+
+from sklearn.metrics import mean_squared_error as mse
+mse(y_test, y_pred)
+
+# Mean Absolute Error 불러오고 실행하기
+
+from sklearn.metrics import mean_absolute_error as mae
+mae(y_test, y_pred)
+
+# R_square 불러오고 실행하기 (R^2 값은 perfect correlation이면 1 correlation이 약해질 수록 0에 가까워진다.)
+
+from sklearn.metrics import r2_score
+r2_score(y_test, y_pred)
+
+>> 참고로 R^2 값이 0.64면 높은 편이래
+
+
+
+
+## n_estimator 라는 hyperparameter를 바꿔서 새로운 모델을 만들기
+
+# RandomForest에는 여러개의 의사결정 나무(Decision Tree)를 만들고, 그들이 내놓은 결과들을 투표나 평균을 내어 최종 결론을 내리는 모델.
+# 이때, n_estimator는 의사결정 나무의 수로,n_estimator=300은 300그루의 나무에게 의견을 물어보겠다는 의미.
+# 숫자가 커지면 정확도는 향상되지만 학습 시간(fit)과 예측 시간(predict)이 오래걸리고 메모리도 더 많이 필요하다.
+my_model2 = RFR(n_estimators=300)
+
+my_model2.fit(X_train, y_train)
+y_pred2 = my_model2.predict(X_test)
+mse(y_test, y_pred2)
+
+
+>> 지금은 n_estimator라는 나무 수만 조절해서 새로운 모델을 만들어 봤는데 그렇다면 과연 어떤 모델이 최적이냐?
+
+===> 이것을 알아내는 과정이 Hyperparameter tuning
