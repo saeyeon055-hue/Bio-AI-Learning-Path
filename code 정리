@@ -204,7 +204,317 @@ fps = [fpgen.GetFingerprint(x) for x in ms]   # 리스트 있을 때
 
 < 3 강 >
 
+# MaxMinPicker 명령어
+from rdkit import Chem
+from rdkit.Chem import rdFingerprintGenerator
+fpgen = rdFingerprintGenerator.GetMorganGenerator(radius=3)
+from rdkit import DataStructs
+from rdkit.SimDivFilters.rdSimDivPickers import MaxMinPicker
+
+## 압축 파일로부터 분자를 읽어들임.
+import gzip
+with gzip.open("data/actives_5ht3.sdf.gz") as fin:
+    with Chem.ForwardSDMolSupplier(fin) as suppl:
+       mols = [m for m in suppl if m is not None]
+
+
+## Chem.ForwardSDMolSupplier는 기본적으로 SDF 형식을 읽기 위한 전용 도구 (.sdf 파일 혹은 .mol 파일)
+
+## 다른 형식을 읽고 싶을땐?
+SMILES 형식(.smi) => Chem.SmilesMolSupplier
+PDB 형식 (.pdb) => Chem.MolFromPDBFile
+
+# 2D coordinate 만드는 모듈 불러오기
+from rdkit.Chem import AllChem
+AllChem.Compute2DCoords(X)
+
+
+# n 개 분자에서 최대한 다양하게 n개의 분자를 추려내는 코드
+(FingerprintGenerator > GetFingerprint > [ExplicitBitVect 로 반환; 구조의 개수 정보 미포함]
+(FingerprintGenerator > GetCountFingerprint > [UlntSparselntVect 로 반환; 구조의 개수 정보 포함]
+
+fps = [fpgen.GetFingerprint(x) for x in mols]
+fps[0]
+=> <rdkit.DataStructs.cDataStructs.ExplicitBitVect at 0x1bee0c01540>
+
+fpss = [fpgen.GetCounterFingerprint(x) for x in mols]
+fpss[0]
+=> <rdkit.DataStructs.cDataStructs.UIntSparseIntVect at 0x1bee0c075a0>
+
+
+# 리스트에 존재하는 분자 객체(벡터)로 사용항 수 있는 method를 확인할때
+dir(x)
+
+# 일반 단어로 시작하는 method => 실제 내가 사용 할 수 있는 기능
+Ex) 'GetLength', 'GetNonzeroElements', 'GetTotalVal', 'ToBinary', 'ToList', 'UpdateFromSequence'
+
+#__로 시작하는 metohd => 파이썬 내부 처리를 위한 특수 method
+Ex) '__add__', '__and__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__'
+
+## dir로 확인한 method 중 상세 설명과 사용법을 알고 싶을 때
+help(x, method)
+
+
+# 서로 닮지 않음을 정의 할때 사용하는 'distij 함수'
+
+  ## i와 j를 input으로 받아서 i번째와 j번째 분자의 distance를 계산하는 함수.
+    def distij(i,j,fpss=fpss):
+      return 1-DataStructs.DiceSimilarity(fpss[i],fpss[j])
+
+  ## def distij(i,j,fps=fps):
+      ### fps=fps 의미: argument를 주지 않으면 기본적으로 fps라는 리스트를 사용하겠다.
+
+    ## return 1-DataStructs.DiceSimilarity(fps[i],fps[j])
+      ### i번째와 j번째 fps 리스트에서 DiceSimilarity를 계산해서 1에서 빼주겠다. 즉, 거리 = 1- 유사도 
+
+
+# MaxMinPicker 알고리즘을 수행하는 instance 생성
+picker = MaxMinPicker()
+
+# LazyPick를 통한 2차원 거리 행렬 계산
+LazyPick((MaxMinPicker)self, (rdkit.Chem.rdMolDescriptors.AtomPairsParameters)distFunc, (int)poolSize, (int)pickSize, (int)seed, [,rdkit.Chem.rdMolDescriptors.AtomPairsParameters)firstPicks=()[, (int)seed=-1[, (rdkit.Chem.rdMolDescriptors.AtomPairsParameters)useCache=None]]])
+Lazy Evaluation(게으른 계산): 도구(여기서는 MaxMinPicker)를 사용하여 distij라는 기준에 따라 모든 분자 간의 2차원 거리 행렬(Distance Matrix)을 미리 계산하지 않고, 필요할 때마다 거리를 계산함.
+계산된 거리는 캐시(Cache)에 저장하여 불필요한 재계산 방지.
+MaxMin 알고리즘: 이미 선택된 화합물 세트와 가장 거리가 먼(즉, 가장 유사도가 낮은) 화합물을 반복적으로 선택하여 다양성을 극대화.
+
+* argument 설명 *
+(MaxMinPicker)self : 정의하지 않으면 MaxMinPicker로 실행됨.
+(rdkit.Chem.rdMolDescriptors.AtomPairsParameters)distFunc : dist 함수 (여기서는 이전에 정의한 distij)
+(int)poolSize : 전체 라이브러리 (분자의 pool) 안에 몇개가 있느냐
+(int)pickSize : pool 중에서 몇개를 고를거냐
+(int)seed : 대부분의 picking하는 알고리즘들의 경우, 처음에 무작위한 상태에서 시작해서 조금씩 정교하게 만들어나가는 과정을 포함하기 때문에 seed 옵션을 사용한다.
+(optional) seed for the random number generator
+: seed를 주지 않으면 계산할때마다 다른 값을 얻을 수 있는데 seed를 주면 계산할때마다 똑같은 값을 얻을 수 있다.
+아래의 곽괄호는 선택사항
+
+** int = 정수 형태의 숫자를 의미함
+
+# pickIndices(변수)로 받고 10개의 분자 인덱스 확인
+pickIndices = picker.LazyPick(distij,len(fpss),10,seed=100)
+list(pickIndices)
+
+## 10개의 분자 인덱스를 오름차순으로 정렬
+sorted(list(pickIndices))
+
+
+# Fingerprints로 유사도 맵 생성
+## 두개의 분자가 있을때, 어디가 유사하고 어디가 다른지를 빠르게 확인하기 위해 similarity map 생성
+[분자 불러들이기]
+mol = Chem.MolFromSmiles('COc1cccc2cc(C(=O)NCCCCN3CCN(c4cccc5nccnc54)CC3)oc21')
+refmol = Chem.MolFromSmiles('CCCN(CCCCN1CCN(c2ccccc2OC)CC1)Cc1ccc2ccccc2c1')
+
+[Map을 그리기 위해 불러와야하는 sub 모듈]
+from rdkit.Chem import Draw 
+from rdkit.Chem.Draw import SimilarityMaps
+
+[실제 map 생성하는 코드]
+## draw 객체 생성
+d2d = Draw.MolDraw2DCairo(400, 400)
+## fingerprint 함수 명시
+fp_func = lambda m, idx: SimilarityMaps.GetMorganFingerprint(m, idx, radius=2, nBits=2048)
+
+## 반드시 draw2d 넣어야 함 (최신 RDKit에서는 GetSimilarityMapForFingerprint()가 반드시 draw2d 객체를 요구함)
+SimilarityMaps.GetSimilarityMapForFingerprint(
+    refmol,
+    mol,
+    fp_func,
+    draw2d=d2d
+)
+
+## 마무리
+d2d.FinishDrawing()
+
+## 출력 (Jupyter)
+from IPython.display import Image
+Image(d2d.GetDrawingText())
+
+## 파일로 저장 시
+d2d.WriteDrawingText('similarity_map.png')
+
+# 분자의 특정 성질 또는 종합적인 구조/성질을 숫자롤 나타내기 (Descriptor)
+두군데의 sub-module에 정의되어 있음: Descriptor / rdMolDescriptor
+
+[모듈 불러오기]
+from rdkit.Chem import Descriptors, rdMolDescriptors
+m = Chem.MolFromSmiles('c1ccccc1C(=O)O')
+
+[# TPSA(Total polar surface area) 값이 크면 클수록 물과 interaction 할 수 있는 부분이 많다(polar 하다)는 것을 의미]
+Descriptors.TPSA(m)
+
+
+# 화합물의 친유성을 나타내는 지표 (LogP)
+  ## 실험값이 아닌 rdkit에 구현되있는 logP 예측 알고리즘을 이용해서 계산
+    Descriptors.MolLogP(m)
+
+  ## method 중 'BalabanJ'로 계산하며 이는 분자가 얼마나 복잡하게 생겼느냐, Branch가 얼나 많은가?를 간접적으로 표현하는 수치
+    Descriptors.BalabanJ(m)
+
+  ## method 중 'FractionCSP3'로 계산(출력값에 100을 곱하면 %)
+    Descriptors.FractionCSP3(m) #sp3 carbon의 fraction.
+
+  ## method 중 'RingCount'로 계산, ring 구조의 개수
+    Descriptors.RingCount(mols[0])
+
+  ## method 중 'fr_imide'로 계산, imide functional group의수
+    Descriptors.fr_imide(mols[0])
+
+  ## method 중 'fr_phenol'로 계산, phenol functional group의수
+    Descriptors.fr_phenol(mols[0])
+
+  ## method 중 'qed'로 계산(QED: 8가지 물성에 기반하여 기존에 알려진 약과의 유사성. 0~1 사이로 계산되며 0에 가까울수록 기존 약과 많이 다름을 의미)
+    Descriptors.qed(m)
+
+
+
+
 < 4 강 >
+
+
+# Anaconda 이용해서 scikit-learn 설치 (-y 옵션의 경우 무조건 yes, 설치를 하라는 의미)
+!conda install -c conda-forge scikit-learn -y 
+
+
+# JACK2 단백질의 protein assay 결과를 예측하는 Random Forest 모델(Machine Learning) 만들기
+
+
+  ## 파일 읽어들이기
+  smiles_list = []    # 비어있는 list 정의
+  pIC50_list = []    # 비어있는 list 정의
+  with open("data/jak2_data.csv") as fp:            # data 폴터 안의 jak2_data.csv 파일을 읽기 모드로 열고, 이 파일 객체를 fp라는 이름으로 부르겠다.
+      for l in fp.readlines()[1:]:                  # fp.resdlines() => 파일의 모든 줄을 읽어와 리스트로 만든다. [1:] => 리스트의 두번째 줄(인덱스 1부터_두번째부터 끝까지 가져온다. (보통 첫 번째줄은 컬럼명인 헤이므로 제외)
+          smiles, pIC50 = l.strip().split(',')      # l.split() => 줄 끝의 줄바꿈 문자(\n)나 공백 제거. .split(',') 쉼표(,)를 기준으 문자열 자르기 smiles, pIC50 = ... => 자른 두 값을 각각 smiles와 pIC50 변수 나누어 저장. 
+          pIC50 = float(pIC50)                      # pIC50는 실수 값이기 때문에(현재 문자로 저장되어있음) , 실수 값으로 변환
+          smiles_list.append(smiles)                # smiles에 해당하는 값을 smiles_list에 하나씩 저장
+          pIC50_list.append(pIC50)                  # pIC50에 해당하는 값을 pIC50_list에 하나씩 저장
+
+
+* 참고 *
+# [0:2] 의미
+smiles_list[0:2]
+
+
+# SMILES를 Descriptor로 변환 (분자 객체를 벡터 즉, 숫자 리스트)
+
+desc = calc_descriptors(Chem.MolFromSmiles("c1ccccc1"))
+
+
++ 추가 정보 +
+TIP : tpdm 모듈을 사용하면 progress bar를 볼 수 있다.
+! conda install -c conda-forge tqdm -y 하면 설치가능하고 아래와 같이 사용 가능
+
+from tqdm import tqdm
+sec_list = []
+for smiles in tqdm(smiles_list):     # tqdm 을 사용함으로써 progress 상황 알 수 있다.
+    mol = Chem.MolFromSmiles(smiles) #SMILES -> Mol type으로 변경
+    dsec = calc_descriptors(mol)
+    dsec_list.append(dsec)
+
+
+# NumPy Array (np)
+=> sicKit learn을 다루기 위이해 NumPy array로 변환
+=> NumPy Array는 수학적, 과학적 연산을 빠르게하기 위해서 사용되는 rdkit의 외부 모듈
+
+[모듈 불러오기]
+import numpy as np #여기서 'as'는 내가 어떤 모듈을 내가 원한는 별명(np)로 지정하겠다는 의미
+
+X = np.array(dsec_list)
+=> 일반적으로 인풋 데이터 전체를 X 로 표현함. Input Feature
+y = 예측하고자하는 타겟값
+=> y = np.array(pIC50_list)
+
++ 추가 정보 +
+X.shape vs Type(X)
+
+Shape(구조, 차원)
+: 데이터가 몇 차원인지, 각 차원에 요소가 몇 개인지 나타내는 배열의 형태. 데이터의 크기와 구성을 확인할 때 사용.
+>> 출력값 (1911, 195)의 의미: 1911 X 195 행렬로 변환됨. 즉 (X, Y)는 X개의 데이터가 Y의 차원(물성)으로 구성되어있다.
+
+Type (형식, 자료형)
+: 데이터가 어떤 자료형(Data Type)인지 나타냄. 데이터가 32비트 정수인지, 64비트 실수인지, 혹은 RDKit 전용 비트 벡터 객체인지 확인
+>> 출력값 numpy.ndarray, rdkit.DataStructs.cDataStructs.ExplicitBitVect.
+
+
+# 머신 러닝 알고리즘
+Random forest 이용한 예측모델 중 binding assay 결과를 예측하는 regression 모델(회귀 모델)
+< 요약 >
+1. Random Forest model(algorithm) 불러오기
+2. 학습 데이터와 검증 데이터 준비
+3. 모델 학습
+4. 검증
+5. 시각화
+-------------------------------------------------------------------------------------------------------------------
+
+1. Random Forest model(algorithm) 불러오기
+[모듈 불러오기]
+from sklearn.ensemble import RandomForestRegressor as RFR
+
+[default 모델 생성]
+=> instance 를 생성할 때, 아무런 argument(인자 혹은 숫자; 괄호 안에 적는 거) 를 주지 않으면 default 옵션으로 생성됨.
+my_model = RFR()
+
+
+2. 학습 데이터와 검증 데이터 준비
+[모듈 볼러오기]
+from sklearn.model_selection import train_test_split
+
+[ train 데이터와 test 데이터 분리]
+=> train_test_split()의 return 값은 X-train, X-test, y_train, y_test
+X_train, X_test, y_train, y_test = train_test_split(X, y,test_size = 0.2, random_state = 42)
+
+
+3. 모델 학습
+[fit 함수를 통한 모델 학습]
+my_model.fit(X_train, y_train)
+
++ 추가 정보 +
+  ## verbose 옵션을 통한 진행 과정 시각화
+    my_model = RFR(n_estimators=100, verbose=2)
+    my_model = RFR(verbose=2)
+
+
+4. 검증
+[예측을 시킬 때]
+y_pred = my_model.predict(X_test
+
+[정량 검증을 위한 계산]
+  1) Mean Squared Error(성능 평가)
+    >> Mean Squared Erro : {(실제값)-(예측값)}^2
+
+from sklearn.metrics import mean_squared_error as mse
+mse(y_test, y_pred)
+
++ 제곱을 구하는 코드 +
+np.sqrt(mse(y_test, y_pred))
+
+
+  2) Mean Absolute Error
+from sklearn.metrics import mean_absolute_error as mae
+mae(y_test, y_pred)
+
+  3) R^2
+from sklearn.metrics import r2_score
+r2_score(y_test, y_pred)
+
+
+5. 시각화
+
+import matplotlib
+
+# matplotlib 설정 객체에 강제로 _get 메서드를 심어주는 코드.
+if not hasattr(matplotlib.rcParams, '_get'):
+    matplotlib.rcParams._get = lambda key: matplotlib.rcParams[key]
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+# 테스트용 그래프
+plt.scatter([1, 2, 3], [4, 5, 6])
+plt.show()
+
+plt.scatter(y_test, y_pred)
+
+
+
 < 5 강 >
 < 6 강 >
 < 7 강 >
