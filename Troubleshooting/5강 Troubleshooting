@@ -1,0 +1,14 @@
+그래프 그릴때 부르는 모듈
+
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+
+import matplotlib
+# matplotlib 설정 객체에 강제로 _get 메서드를 심어줍니다.
+if not hasattr(matplotlib.rcParams, '_get'):
+    matplotlib.rcParams._get = lambda key: matplotlib.rcParams[key]
+
+import matplotlib.pyplot as plt
+%matplotlib inline
