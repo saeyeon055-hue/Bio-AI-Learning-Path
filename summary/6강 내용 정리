@@ -1,0 +1,433 @@
+< Random Forest Cleassificer과 여러가지 matric을 이용해서 모델의 성능 평가 >
+
+
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import AllChem
+
+
+from rdkit.Chem import AllChem
+from rdkit import DataStructs
+from rdkit.Chem import MolFromSmiles
+from rdkit.Chem.GraphDescriptors import (BalabanJ, BertzCT, Chi0, Chi0n, Chi0v, Chi1,
+                                         Chi1n, Chi1v, Chi2n, Chi2v, Chi3n, Chi3v, Chi4n, Chi4v,
+                                         HallKierAlpha, Ipc, Kappa1, Kappa2, Kappa3)
+
+from rdkit.Chem.EState.EState_VSA import (EState_VSA1, EState_VSA10, EState_VSA11, EState_VSA2, EState_VSA3,
+                                          EState_VSA4, EState_VSA5, EState_VSA6, EState_VSA7, EState_VSA8, EState_VSA9,
+                                          VSA_EState1, VSA_EState10, VSA_EState2, VSA_EState3, VSA_EState4, VSA_EState5,
+                                          VSA_EState6, VSA_EState7, VSA_EState8, VSA_EState9,)
+
+from rdkit.Chem.Descriptors import (ExactMolWt, MolWt, HeavyAtomMolWt, MaxAbsPartialCharge, MinPartialCharge,
+                                    MaxPartialCharge, MinAbsPartialCharge, NumRadicalElectrons, NumValenceElectrons)
+
+from rdkit.Chem.EState.EState import (MaxAbsEStateIndex, MaxEStateIndex, MinAbsEStateIndex, MinEStateIndex,)
+
+from rdkit.Chem.Lipinski import (FractionCSP3, HeavyAtomCount, NHOHCount, NOCount, NumAliphaticCarbocycles,
+                                 NumAliphaticHeterocycles, NumAliphaticRings, NumAromaticCarbocycles, NumAromaticHeterocycles,
+                                 NumAromaticRings, NumHAcceptors, NumHDonors, NumHeteroatoms, RingCount,
+                                 NumRotatableBonds, NumSaturatedCarbocycles, NumSaturatedHeterocycles, NumSaturatedRings,)
+
+from rdkit.Chem.Crippen import (MolLogP, MolMR, )
+
+from rdkit.Chem.MolSurf import (LabuteASA, PEOE_VSA1, PEOE_VSA10, PEOE_VSA11, PEOE_VSA12, PEOE_VSA13, PEOE_VSA14,
+                                PEOE_VSA2, PEOE_VSA3,PEOE_VSA4, PEOE_VSA5, PEOE_VSA6, PEOE_VSA7, PEOE_VSA8, PEOE_VSA9,
+                                SMR_VSA1, SMR_VSA10, SMR_VSA2, SMR_VSA3, SMR_VSA4, SMR_VSA5, SMR_VSA6,
+                                SMR_VSA7, SMR_VSA8, SMR_VSA9, SlogP_VSA1, SlogP_VSA10, SlogP_VSA11, SlogP_VSA12,
+                                SlogP_VSA2, SlogP_VSA3,SlogP_VSA4, SlogP_VSA5, SlogP_VSA6, SlogP_VSA7, SlogP_VSA8,
+                                SlogP_VSA9, TPSA, )
+
+from rdkit.Chem.Fragments import (fr_Al_COO, fr_Al_OH, fr_Al_OH_noTert, fr_ArN, fr_Ar_COO, fr_Ar_N, fr_Ar_NH,
+ fr_Ar_OH, fr_COO, fr_COO2, fr_C_O, fr_C_O_noCOO, fr_C_S, fr_HOCCN, fr_Imine, fr_NH0, fr_NH1,
+ fr_NH2, fr_N_O, fr_Ndealkylation1, fr_Ndealkylation2, fr_Nhpyrrole, fr_SH, fr_aldehyde, fr_alkyl_carbamate,
+ fr_alkyl_halide, fr_allylic_oxid, fr_amide, fr_amidine, fr_aniline, fr_aryl_methyl, fr_azide, fr_azo, fr_barbitur,
+ fr_benzene, fr_benzodiazepine, fr_bicyclic, fr_diazo, fr_dihydropyridine, fr_epoxide, fr_ester, fr_ether, fr_furan,
+ fr_guanido, fr_halogen, fr_hdrzine, fr_hdrzone, fr_imidazole, fr_imide, fr_isocyan, fr_isothiocyan, fr_ketone,
+ fr_ketone_Topliss, fr_lactam, fr_lactone, fr_methoxy, fr_morpholine, fr_nitrile, fr_nitro, fr_nitro_arom,
+ fr_nitro_arom_nonortho, fr_nitroso, fr_oxazole, fr_oxime, fr_para_hydroxylation, fr_phenol,
+ fr_phenol_noOrthoHbond, fr_phos_acid, fr_phos_ester, fr_piperdine, fr_piperzine, fr_priamide, fr_prisulfonamd,
+ fr_pyridine, fr_quatN, fr_sulfide, fr_sulfonamd, fr_sulfone, fr_term_acetylene, fr_tetrazole, fr_thiazole, fr_thiocyan,
+ fr_thiophene, fr_unbrch_alkane, fr_urea)
+
+# Descriptor 계산 수행 함수. 
+def calc_descriptors(mol):
+    if mol is None:
+        print("Molecule is None!")
+        return None
+    else:
+        AllChem.ComputeGasteigerCharges(mol)
+        finger = [
+            BalabanJ(mol) , # 0
+            BertzCT(mol) , # 1
+            Chi0(mol) , # 2
+            Chi0n(mol) , # 3
+            Chi0v(mol) , # 4
+            Chi1(mol) , # 5
+            Chi1n(mol) , # 6
+            Chi1v(mol) , # 7
+            Chi2n(mol) ,
+            Chi2v(mol) ,
+            Chi3n(mol) ,
+            Chi3v(mol) ,
+            Chi4n(mol) ,
+            Chi4v(mol) ,
+            EState_VSA1(mol) ,
+            EState_VSA10(mol) ,
+            EState_VSA11(mol) ,
+            EState_VSA2(mol) ,
+            EState_VSA3(mol) ,
+            EState_VSA4(mol) ,
+            EState_VSA5(mol) ,
+            EState_VSA6(mol) ,
+            EState_VSA7(mol) ,
+            EState_VSA8(mol) ,
+                EState_VSA9(mol) ,
+                ExactMolWt(mol) ,
+                FractionCSP3(mol) ,
+                HallKierAlpha(mol) ,
+                HeavyAtomCount(mol) ,
+                HeavyAtomMolWt(mol) ,
+                # Ipc(mol) ,
+                Kappa1(mol) ,
+                Kappa2(mol) ,
+                Kappa3(mol) ,
+                LabuteASA(mol) ,
+                MaxAbsEStateIndex(mol) ,
+                MaxAbsPartialCharge(mol) ,
+                MaxEStateIndex(mol) ,
+                MaxPartialCharge(mol) ,
+                MinAbsEStateIndex(mol) ,
+                MinAbsPartialCharge(mol) ,
+                MinEStateIndex(mol) ,
+                MinPartialCharge(mol) ,
+                MolLogP(mol) ,
+                MolMR(mol) ,
+                MolWt(mol) ,
+                NHOHCount(mol) ,
+                NOCount(mol) ,
+                NumAliphaticCarbocycles(mol) ,
+                NumAliphaticHeterocycles(mol) ,
+                NumAliphaticRings(mol) ,
+                NumAromaticCarbocycles(mol) ,
+                NumAromaticHeterocycles(mol) ,
+                NumAromaticRings(mol) ,
+                NumHAcceptors(mol) ,
+                NumHDonors(mol) ,
+                NumHeteroatoms(mol) ,
+                NumRadicalElectrons(mol) ,
+                NumRotatableBonds(mol) ,
+                NumSaturatedCarbocycles(mol) ,
+                NumSaturatedHeterocycles(mol) ,
+                NumSaturatedRings(mol) ,
+                NumValenceElectrons(mol) ,
+                PEOE_VSA1(mol) ,
+                PEOE_VSA10(mol) ,
+                PEOE_VSA11(mol) ,
+                PEOE_VSA12(mol) ,
+                PEOE_VSA13(mol) ,
+                PEOE_VSA14(mol) ,
+                PEOE_VSA2(mol) ,
+                PEOE_VSA3(mol) ,
+                PEOE_VSA4(mol) ,
+                PEOE_VSA5(mol) ,
+                PEOE_VSA6(mol) ,
+                PEOE_VSA7(mol) ,
+                PEOE_VSA8(mol) ,
+                PEOE_VSA9(mol) ,
+                RingCount(mol) ,
+                SMR_VSA1(mol) ,
+                SMR_VSA10(mol) ,
+                SMR_VSA2(mol) ,
+                SMR_VSA3(mol) ,
+                SMR_VSA4(mol) ,
+                SMR_VSA5(mol) ,
+                SMR_VSA6(mol) ,
+                SMR_VSA7(mol) ,
+                SMR_VSA8(mol) ,
+                SMR_VSA9(mol) ,
+                SlogP_VSA1(mol) ,
+                SlogP_VSA10(mol) ,
+                SlogP_VSA11(mol) ,
+                SlogP_VSA12(mol) ,
+                SlogP_VSA2(mol) ,
+                SlogP_VSA3(mol) ,
+                SlogP_VSA4(mol) ,
+                SlogP_VSA5(mol) ,
+                SlogP_VSA6(mol) ,
+                SlogP_VSA7(mol) ,
+                SlogP_VSA8(mol) ,
+                SlogP_VSA9(mol) ,
+                TPSA(mol) ,
+                VSA_EState1(mol) ,
+                VSA_EState10(mol) ,
+                VSA_EState2(mol) ,
+                VSA_EState3(mol) ,
+                VSA_EState4(mol) ,
+                VSA_EState5(mol) ,
+                VSA_EState6(mol) ,
+                VSA_EState7(mol) ,
+                VSA_EState8(mol) ,
+                VSA_EState9(mol) ,
+                fr_Al_COO(mol) ,
+                fr_Al_OH(mol) ,
+                fr_Al_OH_noTert(mol) ,
+                fr_ArN(mol) ,
+                fr_Ar_COO(mol) ,
+                fr_Ar_N(mol) ,
+                fr_Ar_NH(mol) ,
+                fr_Ar_OH(mol) ,
+                fr_COO(mol) ,
+                fr_COO2(mol) ,
+                fr_C_O(mol) ,
+                fr_C_O_noCOO(mol) ,
+                fr_C_S(mol) ,
+                fr_HOCCN(mol) ,
+                fr_Imine(mol) ,
+                fr_NH0(mol) ,
+                fr_NH1(mol) ,
+                fr_NH2(mol) ,
+                fr_N_O(mol) ,
+                fr_Ndealkylation1(mol) ,
+                fr_Ndealkylation2(mol) ,
+                fr_Nhpyrrole(mol) ,
+                fr_SH(mol) ,
+                fr_aldehyde(mol) ,
+                fr_alkyl_carbamate(mol) ,
+                fr_alkyl_halide(mol) ,
+                fr_allylic_oxid(mol) ,
+                fr_amide(mol) ,
+                fr_amidine(mol) ,
+                fr_aniline(mol) ,
+                fr_aryl_methyl(mol) ,
+                fr_azide(mol) ,
+                fr_azo(mol) ,
+                fr_barbitur(mol) ,
+                fr_benzene(mol) ,
+                fr_benzodiazepine(mol) ,
+                fr_bicyclic(mol) ,
+                fr_diazo(mol) ,
+                fr_dihydropyridine(mol) ,
+                fr_epoxide(mol) ,
+                fr_ester(mol) ,
+                fr_ether(mol) ,
+                fr_furan(mol) ,
+                fr_guanido(mol) ,
+                fr_halogen(mol) ,
+                fr_hdrzine(mol) ,
+                fr_hdrzone(mol) ,
+                fr_imidazole(mol) ,
+                fr_imide(mol) ,
+                fr_isocyan(mol) ,
+                fr_isothiocyan(mol) ,
+                fr_ketone(mol) ,
+                fr_ketone_Topliss(mol) ,
+                fr_lactam(mol) ,
+                fr_lactone(mol) ,
+                fr_methoxy(mol) ,
+                fr_morpholine(mol) ,
+                fr_nitrile(mol) ,
+                fr_nitro(mol) ,
+                fr_nitro_arom(mol) ,
+                fr_nitro_arom_nonortho(mol) ,
+                fr_nitroso(mol) ,
+                fr_oxazole(mol) ,
+                fr_oxime(mol) ,
+                fr_para_hydroxylation(mol) ,
+                fr_phenol(mol) ,
+                fr_phenol_noOrthoHbond(mol) ,
+                fr_phos_acid(mol) ,
+                fr_phos_ester(mol) ,
+                fr_piperdine(mol) ,
+                fr_piperzine(mol) ,
+                fr_priamide(mol) ,
+                fr_prisulfonamd(mol) ,
+                fr_pyridine(mol) ,
+                fr_quatN(mol) ,
+                fr_sulfide(mol) ,
+                fr_sulfonamd(mol) ,
+                fr_sulfone(mol) ,
+                fr_term_acetylene(mol) ,
+                fr_tetrazole(mol) ,
+                fr_thiazole(mol) ,
+                fr_thiocyan(mol) ,
+                fr_thiophene(mol),
+                fr_unbrch_alkane(mol) ,
+                fr_urea(mol) , #rdkit properties # 196
+                ]
+        return finger
+
+
+
+
+# Pandas 불러오기
+import pandas as pd
+
+## pandas로 csv 파일 읽어들이기
+dat = pd.read.csv("data/jak2_data.csv")
+
+### Pandas의 기본 자료구조는 DataFrame 이라는 Class
+type(dat)
+>> pandas.core.frame.DataFrame
+
+
+# describe라는 메소드를 이용하면 data의 각 column의 기본 통계치를 알 수 있다.
+dat.describe()
+
+
+# 예제: ASK1 단백질에 active한 물질 예측하는 모델
+
+1. 어떤 물질이 active인지 정의
+## pIC50 class 값이 6보다 크면 True, 그렇지 않으면 False로 정의
+
+# Pandas 데이터 프레임에서 특정 column을 선택할 때는 column의 이름을 정해야한다.
+active = dat["pIC50"] > 6
+
+### Pandas의 Series라고 하는 class로 정의됨.
+type(active)
+>> pandas.core.series.Series
+
+
+2. Inpur feature matrix 만들기
+2-1. SMILES -> Mol로 변환
+mol_list = []   # mol type 변수를 저장할 비어있는 리스트
+for smi in dat["SMILES"]:
+    m = Chem.MolFromSmiles(smi)
+    if m is not None:   # 실제 유효한 분자라면
+        mol_list.append(m)
+
+2-2. Mol -> descriptor로 변환
+desc_list = []
+for m in mol_list:
+    desc_list.append(calc_descriptors(m))
+
+2-3. descriptor 벡터를 Numpy array로 변환
+import numpy as np
+X = np.array(desc_list)
+
+
+++ 출력값 해석 ++
+(1911, 195)
+=> X가 1991 X 195 크기를 가지는 행렬로 변환
+
+
+3. Training set과 test set 분리 (train test split 모듈 사용)
+from sklearn.model_selection import train_test_split
+
+y = active
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+
+4. RandomForest Classifier
+# RandomForest Classifier 불러오기
+from sklearn.ensemble import RandomForestClassifier as RFC
+
+# default setting 으로 모델 생성.
+my_model = RFC()
+
+# 모델 학습
+my_model.fit(X_train, y_train)
+
+# 예측
+y_pred = my_model.predict(X_test)
+
+
+# accuracy, precision, recall, f1, confusion 을 통한 모델 성능 평가를 위한 서브 모듈 불러들이기
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+
+4.1 Confusion matrix
+confusion_matrix(y_test, y_pred)
+
+# 각 행과 열이 어떤 class에 해당하는지 확인.
+print(my_model.classes_)
+
+4.2 accuracy
+accuracy_score(y_test, y_pred)
+
+4.3 precision
+precision_score*y_test, y_pred)
+
+4.4 recll
+recll_score(y_test, y_pred)
+
+4.5 F1 score
+# precision과 recall 만으로는 해석의 오류/오차가 있을 수 있기 때문에 F1 score로 확인
+f1_score(y_test, y_pred)
+
+4.6 balanced accuracy
+# True와 False 데이터의 비율이 많이 차이날때
+from sklearn.matrics import balanced_accuracy_score
+balanced_accuracy_score(y_test, y_pred)
+
+4.7 Matthews_corrcoce(MCC)
+# FP, TP, TN, FN를 모두 고려한 balanced measured
+from sklearn.metirics import matthews_corrcoef as mcc
+mcc(y_test, y_pred)
+
+
+5. ROC curve
+> ROC 커브 계산을 하기 위해서는 class prediction probability가 필요
+
+> 이를 계산하기 위해서 대부분의 sklearn에 존재하는 예측 모델들은 predict_proba 라고 하는 method를 가지고 있음
+
+from sklearn.metrics import roc_curve
+
+# 모델이 최종적으로 내릴 "결정(Lable)".
+# 보통 정확도(Accuracy), 정밀도(Precision), 재현율(recall)을 계산할 때 쓴다.
+my_model.predict(X_test)
+
+
+# 모델이 각 클래스에 대해 느는 "확신도(Probability)"
+# ROC 커브와 AUC를 계산할 때는 이 확률값이 반드시 필요. 
+y_score = my_model.predict_proba(X_test)
+
+
+# 이 속성은 모델이 학습 과정에서 마주친 타겟 레이블(클레스)의 종류과 순서를 담고 있음.
+# 예) 암 여부를 ['정상', '암']으로 학습했다면 classes_는 [0.1] 또는 해당 문자열 배열을 가짐.
+# 중요한 이유: predict_proba가 반환하는 결과의 열(column) 순서가 바로 이 classes_의 순서와 일치 (즉, 첫번째 열이 어떤 클래스의 확률인지 확인하려면 이 속성을 봐야함)
+my_model.classes_
+
+
+# 앞에서부터 2개의 데이터(행)에 대하여 모든 클래스의 확률(열)을 보여달라
+# [:2] : 인덱스 0번과 1번, 즉 상위 2개의 샘플 선택
+# [:] : 해당 샘플들이 가진 모든 열(각 클래스별 확률)을 가져온다.
+y_score[:2,:]
+
+# y_score는 Positive prediction의 확률을 입력으로 받는다. []안에 positive prediction
+# roc_curve(y_test, y_score)를 출력하면 fpr, tpr, thres 순서로 출력된다.
+fpr, tpr, thres = roc_curve(y_test, y_score[:, 1])
+
+# 그래프 그리는 모듈 불러오기
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+import matplotlib
+# matplotlib 설정 객체에 강제로 _get 메서드를 심어줍니다.
+if not hasattr(matplotlib.rcParams, '_get'):
+    matplotlib.rcParams._get = lambda key: matplotlib.rcParams[key]
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+plt.plot(fpr, tpr)
+
+
+# X축, Y축 label 설정
+plt.xlabel("FPR")
+plt.ylabel("TPR")
+plt.plot(fpr, tpr)
+
+
+5.2 Area Uner the Curve
+from sklearn.metrics import roc_auc.score as AUC
+AUC(y_test, y_score[:, 1])
+
+
+
+6. Hyperparameter 변경
+modle2 = RFC(n_estimators = 200)
+modle2.fit(X_train, y_train)
+y_pred2 = modle2.predict(X_test)
+f1_score(y_test, y_pred2)
+y_score2 = modle2.predict_proba(X_test)
+AUC(y_test, y_score2[:, 1])
