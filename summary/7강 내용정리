@@ -1,0 +1,66 @@
+< 분자의 3차원 구조 생성하기 >
+
+m = Chem.MolFromSmiles('C1CCC1OC')
+m2 = Chem.AddHs(m)
+
+1. Embed Molecule
+# AllChem의 EmbedMolecule 메쏘드를 이용해서 분자의 3차원 구조를 계산한다.
+AllChem.EmbedMolecule(m2)
+
+2. MMFFOptimizedMolecule
+# EmbedMolecule로 얻은 3차원 구조는 근사적인 3차원 구조
+AllChem.MMFFOptimizeMolecule(m2)
+
+3. EmbedMultipleConfs
+# 예상되는 최적의 구조 뿐만 아니라 다양한 3차원 구조를 얻어야 하는 경우. (Conformational isomer)
+# 'EmbedMultipleConfs' method 사용
+
+# 10개의 구조를 생성한다.
+## numConfs = n : n개의 conformational isomer를 생성하라는 의미
+cids = AllChem.EmbedMultipleConfs(m2, numConfs=10)
+=> cids는 벡터 형식
+
+3-1) Chem.MolToMolBlock, Chem.MolToMolFile, Chem.MolToPDBFile
+=>여러개의 구조를 출력하기 위해서는 MolToMolBlock, MolToMolFile, MolToPDBFile 등의 method에서 confId 옵션을 사용하면 된다.
+=> print(Chem.MolToMolBlock(m2, confId=n))
+==>> 여기서 confId = n 의 n 은 n 번째 분자를 의미. 2번째 분자를 출력하려면 print(Chem.MolToMolBlock(m2, confId=2))
+==>> 6번째 분자를 출력하려면 print(Chem.MolToMolBlock(m2, confId=6))
+==>> 9번째 분자를 출력하려면 print(Chem.MolToMolBlock(m2, confId=9)) 를 입력하면된다.
+
+print(Chem.MolToMolBlock(m2, confId=3))
+print(Chem.MolToMolBlock(m2, confId=9))
+
+
+4. AllChem.AlignMolConformers
+# conformational isomer 사이의 구조 차이는 RMSD(root mena square deviation)로 확인
+All.Chem.AlignMolConformers(m, RMSlist= n or list 이름)
+
+rmslist = []
+AllChem.AlignMolConformers(m2, RMSlist=rmslist)
+print(len(rmslist))
+
+4-1) AllChem.GetConformerRMS
+# 첫번째 conformer와 나머지 conformer 사이의 RMSD 계산.
+=> 몇 A 차이가 나는지?
+# 이때 사용하는 method: AllChem.GetConformerRMS
+=> AllChem.GetConformorRMS(x, n, m, prealigned=True)
+해석: x의 n번째 conformer와 m번째 conformer 사이에 prealigned(미리 aligned된 구조를 사용할 것인지)
+
+rms = AllChem.GetConformerRMS(m2, 2, 9, prealigned=True)
+
+
+5. AllChem.MMFFOptimizeMoleculeConfs
+여러개 conformer들의 에너지를 최소화시킬 수 있다.
+result = AllChem.MMFFOptimizeMoleculeConfs(m2)
+
+ result를 출력하면
+ (n, m) 으로 출력되는데 여기서 n: n=0 이라면 계산이 수렴되었다는 의미, n=1 이라면 수렴하지 않았다.
+ m: 에너지 값. 값이 비슷하면 서로서로 비슷하다고 예측가능
+
+ # optimize된 3차원 구조 출력
+print(Chem.MolToMolBlock(m2, confId=9))
+ 
+ 
+
+
+
