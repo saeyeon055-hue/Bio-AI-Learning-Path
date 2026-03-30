@@ -1,0 +1,10 @@
+강의에는 1911개(drug +non-drug) 인데 나는 600개
+-> 확인해보니 csv 파일 자체에 600개(drug) 만 존재했음
+    -> drug 파일과 non-drug 파일을 하나로 합쳐서 같은 코드로 진행했을때 정상적으로 데이터 읽어들일 수 있었음
+
+# 두 데이터 프레임을 하나로 합치기(위-아래로 연결)
+# axis=0은 행 방향(위 아래)으로 합친다는 의미
+combined_drugs = pd.concat([drugs, non_drugs], axis=0)
+
+# 인덱스 초기화 (합치고 나면 번호가 꼬일 수 있으므로 새로 부여)
+combined_drugs = combined_drugs.reset_index(drop=True)
