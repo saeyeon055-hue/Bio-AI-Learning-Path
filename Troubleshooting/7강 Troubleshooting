@@ -1,0 +1,4 @@
+print(Chem.MolToMolFile(m2, confId=9))
+
+오류 원인
+: m2가 mol file형식이 아니라 문자열(mol block) 형식이기 때문에 발생한 오류
