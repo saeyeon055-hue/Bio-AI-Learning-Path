@@ -1,0 +1,64 @@
+< Hyperparmeter optimizati nusing Scikit-learn and optuna >
+
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from tqdm import tqdm
+
+import pandas as pd
+import numpy as np
+
+1. 데이터 읽어들이기
+drugs = pd.read_csv("data/drugs_7강.csv")
+
+
+
+< 실습 >
+=> 목적: Drug와 non-drug 구분하는 모델 만들기
+
+
+1. descriptor로 변환
+
+import math   # math 함수에는 'is None' 이라는 함수가 있다.
+
+desc_list = []   # descriptor 리스트
+is_drug = []  # True/False 저장할 리스트
+for smi, flag in zip(drugs["smiles"], drugs["is_drug"]):
+    m = Chem.MolFromSmiles(smi)
+    if m is None:   # smiles에서 mol로 변환할때, 에러가 나면 즉, smiles가 문제가 있을 때, skip!
+        continue
+    desc = calc_descriptors(m)
+
+    ## 아래 any 문은 실행안함.
+    # NaN 존재하는지 확인 후, NaN이 있으면 skip!
+    if any([math.isnan(v) for v in desc]):   # desc 리스트에서 v를 하나씩 뽑아올때, is NaN이 있다면 skip 
+        print(f"{smi} cause NaN")
+        continue
+        
+    desc_list.append(desc)
+    if flag == 1:
+        is_drug.append(True)
+    else:
+        is_drug.append(False)
+
+X = np.array(desc_list)
+
+
+        ++ 추가 정보 ++
+
+zip
+: 여러 개의 리스트를 하나로 묶어주는 함수
+
+: drugs["smiles"] 리스트와 drugs["is_drug"] 리스트의 첫 번째 값을 한 쌍으로 묶고 두 번째 값들끼리 묶는다.
+
+flag : 프로그래밍에서 상태를 나타내는 변수명으로 자주 쓰임
+: 즉, zip으로 묶어주는 리스트 개수와 for 문의 변수는 동일해야한다.
+
+: drugs["smiles"] = 변수 smi에 할당되고, drug["is_drug"] = 변수 flag에 할당된다.
+
+math. isnan(v) for v in desc
+: desc 안에 있는 값들을 하나씩 꺼내서 확인
+
+: math.isnan(v): 이 값(v)이 NaN(계산 불능/빈 값) 이니? 라고 묻는 함수 => 결과적으로 NaN인 항목은 True로 표시된 리스트가 만들어짐
+
+if any() : any() 리스트 안에 True가 단 하나라도 있으면 전체를 True로 판단
