@@ -62,3 +62,155 @@ math. isnan(v) for v in desc
 : math.isnan(v): 이 값(v)이 NaN(계산 불능/빈 값) 이니? 라고 묻는 함수 => 결과적으로 NaN인 항목은 True로 표시된 리스트가 만들어짐
 
 if any() : any() 리스트 안에 True가 단 하나라도 있으면 전체를 True로 판단
+
+
+2. traing set, test set 만들기
+X = np.array(desc_list)
+y = np.array(is_drug)
+
+# train과 test 분리
+from sklearn.model_selection import train_test_split
+
+# 분리된 train과 test set에 대하여 학습시킬때 조건 부여
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state =42
+
+
+3. RandomForestClassifier(ML)
+from sklearn.ensemble import RandomForestClassifier as RFC
+my_model = RFC()
+
+# ML 학습
+my_model.fit(X_train, y_train)
+
+# 예측을 위한 변수 만들기
+y_pred = my_model.predict(X_test)
+
+
+4. 계산 tool
+
+from sklearn.metrics import accuracy_score
+
+accuracy_score(y_test, y_pred)
+
+# 어떤 parameter를 가지고 학습이 되었는지 확인 (get_params)
+my_model.get_params()
+
+
+5. Hyperparameter 찾는 도구
+1) GridSearchCV(격자 탐색): 정해진 범위 내의 모든 조합을 다 확인하는 방식으로 사용자가 미리 지정한 파라미터 후보들을 격자처럼만들어서, 모든 경우의 수를 다 대입
+ex) 라면의 물 양(400, 500, 600ml)과 끓이는 시간 (3, 4, 5분)의 모든 조합(9가지)를 다 먹어보고 결정하는 것
+
+2)RandomizedSearch(랜덤 탐색): 모든 조합을 다 보지 않고, 정해진 횟수만큼만 무작위로 골라서 확인하는 방식으로 파라미터 범위를 설정해주면, 그 안에서 랜덤하게 값을 샘플링하여 성능 테스트
+ex) 물 양과 시간을 수십 가지 경우의 수 중 무작위로 3가지만 뽑아서 요리해보고 그중 제일 나은 것을 고르는 것.
+
+# GridSearchCV와 RandomizedSearch 불러오기
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+
+params = {"n_estimators":[100, 150],  # n_estimators를 100과 150개를 test해보겠다.
+          "min_samples_split": [2, 3, 4],    # min_samples_split의 parameter를  2, 3, 4로 test해보겠다.
+          "max_features":[0.3, 0.5, 0.7]}    # max_features를 0.3, 0.5, 0.7로 test해보겠다.
+
+=>  2 X 3 X 3의 18개의 parameter 조합을 테스트 하겠다.
+
+++ 참고 ++
+
+Default metrics 은 classification의 경우 => accuracy
+regression의 경우 => mean_squered_error
+
+
+5-1) GridSearchCV
+clf = RFC(n_jobs = -1)     # n_jobs: 정수 값을 받는데, 몇개의 프로세스를 parrell 하게 쓸것인가? 'n_jobs = -1' =>  컴퓨터에 있는 모든 core를 사용하기때문에 빨라진다.
+grid_search = GridSearchCV(clf, param_grid=params)
+
+# ML과 마찬가지로 fit으로 학습시켜야 작동한다.
+grid_search.fit(X, y)
+
+# GridSearchCV와 Randomigrid_search.fit(X, y)zedSearchCV 가 끝난 결과는 cv_results_라는 attribute에 저장된다.
+grid_search.cv_results_
+
+# 위의 cv_results_의 출력값은 읽기 어려웟 아래의 유틸리티를 이용한다.
+# Utility function to report best scores
+def report(results, n_top=3):
+    for i in range(1, n_top + 1):
+        candidates = np.flatnonzero(results['rank_test_score'] == i)
+        for candidate in candidates:
+            print("Model with rank: {0}".format(i))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})"
+                  .format(results['mean_test_score'][candidate],
+                          results['std_test_score'][candidate]))
+            print("Parameters: {0}".format(results['params'][candidate]))
+            print("")
+
+report(grid_search.cv_results_)
+
+
+* grid 를 사용하면 시간이 너무 오래걸림 *
+=> Randomizedsearch를 이용
+
+
+5-2) RandomizedSearch
+
+from time import time
+n_iter = 5 # 랜덤하게 5번만 테스트. 
+start = time()
+random_search = RandomizedSearchCV(clf, param_distributions = params, n_iter = n_iter)
+random_search.fit(X, y)
+print("RandomizedSearchCV took %.2f seconds for %d candidates"
+      " parameter settings." % ((time() - start), n_iter))   # 걸리는 시간 출력하는 함수
+
+report(random_search.cv_results_)
+
+
+
+< Optuna 라고 하는 hyperparameter package를 테스트 >
+- 베이지안 최적화 방법을 통해서 단순 무작위가 아니라 기존의 결과에 기반하여 효율적으로 hyperparameter를 찾는다
+- 목적함수 값(error)을 최소화하는 방향으로 모델 최적화를 수행함
+- !pip install optuna 이 명령을 이용해서 설치 가능
+
+1. 함수 정의
+
+import optuna
+import sklearn
+
+def objective(trial): # trial은 optuna의 class이다. 
+    
+    # RandomForest 모델을 몇번 split할 것인가? 정수 값을 받는 파라미터. 
+    # 정수로 정의되는 parameter는 suggest_int 라고 하는 method를 사용하여 범위 내 임의로 지정. 
+    # 'rf_Max_depth'라는 parameter에서 2~32 중 아무 정수를 suggest를 하라
+    rf_max_depth = trial.suggest_int('rf_max_depth', 2, 32)
+
+    # n_estimator의 범위를 지정(50~200). 
+    n_tree = trial.suggest_int('n_estimators', 50, 200)
+    
+    # min_samples_split이라고 하는 parameter는 2~5 사이에서 찾도록 지정. 
+    min_samples_split = trial.suggest_int('min_samples_split', 2, 5)
+    
+    # max_features(전체 input feature 중에 몇 %를 node spilt로 사용할 것인지에 해당)는 실수로 주어지는 feature.
+    # 그러므로 suggest_float 이라고하는 method를 사용. 
+    max_features = trial.suggest_float('max_features', 0.3, 0.9)
+    
+    ## 여기까지 범위 지정 끝 ##
+    
+    # model을 정의
+    regressor_obj = RFC(n_estimators = n_tree, 
+                        min_samples_split = min_samples_split, 
+                        max_depth=rf_max_depth, 
+                        max_features = max_features, 
+                        n_jobs=-1)
+    # 모델 fitting. 
+    regressor_obj.fit(X_train, y_train)
+
+    # 모델을 validation set으로 검증. 
+    y_pred = regressor_obj.predict(X_test)
+    
+    ## optuna에서는 목적함수 값을 최소화 하는 방향으로 최적화를 수행한다. 
+    error = 1.0 - sklearn.metrics.accuracy_score(y_test, y_pred)
+    
+    return error
+
+
+2. 학습
+study = optuna.create_study()
+study.optimize(objective, n_trials=10)
+
+study.best_params
