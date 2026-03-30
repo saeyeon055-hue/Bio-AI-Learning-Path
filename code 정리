@@ -632,7 +632,312 @@ AUC(y_test, y_score[:, 1])
 7. Hyperparameter 변경
 modle2 = RFC(n_estimators = 200)
 
+
+
 < 7 강 >
+# 파일 불러올때(pandas는 그 전에 import 해야함)
+drugs = pd.read_csv("data/drugs_7강.csv")
+non_drugs = pd.read_csv("data/non_drug_7강.csv")
+
+# 두 데이터 브레임을 하나로 합치기 (위 아래로 연결)
+# axis=0은 행 방향(위 아래)으로 합친다는 의미
+combined_drugs = pd.concat([drugs, non_drugs], axis=0)
+
+# 인덱스 초기화
+combined_drugs = combined_drugs.reset_index(drop=True)
+
+# 파일이 제대로 불러졌는지 확인해보기
+desc_list = []   # descriptor 리스트
+is_drug = []  # True/False 저장할 리스트
+for smi, flag in zip(combined_drugs["smiles"], combined_drugs["is_drug"]):
+    m = Chem.MolFromSmiles(smi)
+    if m is None:   # smiles에서 mol로 변환할때, 에러가 나면 즉, smiles가 문제가 있을 때, skip!
+        continue
+    desc = calc_descriptors(m)
+    desc_list.append(desc)
+    if flag == 1:
+        is_drug.append(True)
+    else:
+        is_drug.append(False)
+
+
+# RandomForestClassifier
+## 모듈 불러들이기
+from sklearn.ensemble import RandomForestClassifier as RFC
+
+my_model_RFC()
+my_modle.fit(X_train, y_train)
+
+y_pred=my_model.predict(X_test)
+
+
+# Hyperparameter 찾을때
+
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+params = {"n_estimators":[100, 150],  # n_estimators를 100과 150개를 test해보겠다.
+          "min_samples_split": [2, 3, 4],    # min_samples_split의 parameter를  2, 3, 4로 test해보겠다.
+          "max_features":[0.3, 0.5, 0.7]}    # max_features를 0.3, 0.5, 0.7로 test해보겠다.
+
+## GridSearchCV(격자탐색)
+clf = RFC(n_jobs = -1)     # n_jobs: 정수 값을 받는데, 몇개의 프로세스를 parrell 하게 쓸것인가? 'n_jobs = -1' =>  컴퓨터에 있는 모든 core를 사용하기때문에 빨라진다.
+grid_search = GridSearchCV(clf, param_grid=params)
+
+# ML과 마찬가지로 fit으로 학습시켜야 작동
+grid_search.fit(X, y)
+
+# GridSearchCV와 Randomigrid_search.fit(X, y)zedSearchCV 가 끝난 결과는 cv_results_라는 attribute에 저장된다.
+grid_search.cv_results_
+
+# 위의 cv_results_의 출력값은 읽기 어려웟 아래의 유틸리티를 이용한다.
+# Utility function to report best scores
+def report(results, n_top=3):
+    for i in range(1, n_top + 1):
+        candidates = np.flatnonzero(results['rank_test_score'] == i)
+        for candidate in candidates:
+            print("Model with rank: {0}".format(i))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})"
+                  .format(results['mean_test_score'][candidate],
+                          results['std_test_score'][candidate]))
+            print("Parameters: {0}".format(results['params'][candidate]))
+            print("")
+report(grid_search.cv_results_)
+
+
+# RandomizedSearch(랜덤 탐색)
+from time import time
+n_iter = 5 # 랜덤하게 5번만 테스트. 
+start = time()
+random_search = RandomizedSearchCV(clf, param_distributions = params, n_iter = n_iter)
+random_search.fit(X, y)
+print("RandomizedSearchCV took %.2f seconds for %d candidates"
+      " parameter settings." % ((time() - start), n_iter))   # 걸리는 시간 출력하는 함수
+report(random_search.cv_results_)
+
+
+# Optuna (hyperparameter package)
+
+1. 함수 정의
+import optuna
+import sklearn
+
+def objective(trial): # trial은 optuna의 class이다. 
+    
+    # RandomForest 모델을 몇번 split할 것인가? 정수 값을 받는 파라미터. 
+    # 정수로 정의되는 parameter는 suggest_int 라고 하는 method를 사용하여 범위 내 임의로 지정. 
+    # 'rf_Max_depth'라는 parameter에서 2~32 중 아무 정수를 suggest를 하라
+    rf_max_depth = trial.suggest_int('rf_max_depth', 2, 32)
+
+    # n_estimator의 범위를 지정(50~200). 
+    n_tree = trial.suggest_int('n_estimators', 50, 200)
+    
+    # min_samples_split이라고 하는 parameter는 2~5 사이에서 찾도록 지정. 
+    min_samples_split = trial.suggest_int('min_samples_split', 2, 5)
+    
+    # max_features(전체 input feature 중에 몇 %를 node spilt로 사용할 것인지에 해당)는 실수로 주어지는 feature.
+    # 그러므로 suggest_float 이라고하는 method를 사용. 
+    max_features = trial.suggest_float('max_features', 0.3, 0.9)
+    
+    ## 여기까지 범위 지정 끝 ##
+    
+    # model을 정의
+    regressor_obj = RFC(n_estimators = n_tree, 
+                        min_samples_split = min_samples_split, 
+                        max_depth=rf_max_depth, 
+                        max_features = max_features, 
+                        n_jobs=-1)
+    # 모델 fitting. 
+    regressor_obj.fit(X_train, y_train)
+
+    # 모델을 validation set으로 검증. 
+    y_pred = regressor_obj.predict(X_test)
+    
+    ## optuna에서는 목적함수 값을 최소화 하는 방향으로 최적화를 수행한다. 
+    error = 1.0 - sklearn.metrics.accuracy_score(y_test, y_pred)
+    
+    return error
+
+2. study
+study = optuna.create_study()
+study.optimize(objective, n_trials=10)
+
+study.best_params
+
+
 < 8 강 >
+분자의 3차원 구조 생성
+
+1. EmbedMolecule
+# AllChem의 'EmbedMolecule' method 를 이용해서 분자의 3차원 구조를 계산한다.
+AllChem.EmbedMolecule(m2)
+
+2. MMFFOptimizedMolecule
+# AllChem의 'MMFFOptimizeMolecule' method 이용하여 EmbedMolecule로 얻은 근사적인 3차원 구조를 최적화하는 과정
+AllChem.MMFFOptimizeMolecule(m2)
+
+3. EmbedMultipleConfs
+# 예상되는 최적의 구조 뿐만 아니라 다양한 3차원 구조를 얻을때 'AllChem'의 'EmbedMultipleConfs' method 이용
+cids = AllChem.EmbedMultipleConfs(m2, numConfs=10)
+
+# 10개의 구조를 생성한다.
+# numConfs = n : n개의 conformational isomer를 생성하라는 의미
+cids = AllChem.EmbedMultipleConfs(m2, numConfs=10)
+
+3-1) Chem.MolToMolBlock, Chem.MolToMolFile, Chem.MolToPDBFile
+# 여러개 구조를 출력하기 위해 MolToMolBlock, MolToMolFile, MolToPDBFile 등의 method에서 confld 옵션 사용
+print(Chem.MolToMolBlock(m2, confId=n))
+=> 여기서 confId = n 의 n 은 n 번째 분자를 의미.
+
+## 3번째 분자 출력
+print(Chem.MolToMolBlock(m2, confId=3))
+
+## 9번째 분자 출력
+print(Chem.MolToMolBlock(m2, confId=9))
+
+
+4. RMSD (root mean square deviation)
+# conformational isomor 사이의 구조 차이 는 AllChem의 'AlignMolConformers' 모듈을 사용한다.
+rmslist = []
+AllChem.AlignMolConformers(m2, RMSlist=rmslist)
+
+4-1) n번째 분자와 m번째 분자 사이의 RMSD를 계산할때 AllChem의 'GetConformerRMS' 모듈 사용
+rms = AllChem.GetConformerRMS(m2, n, m, prealigned=True)
+
+## n=2, n=9
+rms = AllChem.GetConformerRMS(m2, 2, 9, prealigned=True)
+
+5. 여러개의 conformer들의 에너지 최소화시킬 때 AllChem의 'MMFFOptimizeMoleculeConfs' method 사용
+result = AllChem.MMFFOptimizeMoleculeConfs(m2)
+
+# optimize된 3차원 구조 출력
+print(Chem.MolToMolBlock(m2, confId=9))
+
+
+분자 구조식 그리기
+# 그림을 그리기 위해서 Chem의 하위 모듈이 Draw import
+from rdkit.Chem import Draw
+suppl = Chem.SDMolSupplier("data/cdk2.sdf")
+
+# list comprehension을 이용해서 분자의 리스트를 얻는다.
+# Compute2DCoords 를 사용하는 이유는 그림이 더 예쁘게 나오게 하기 위함.   
+ms = [x for x in suppl if x is not None]
+for m in ms:
+    tmp=AllChem.Compute2DCoords(m)
+
+1. 그림 파일을 분자로 출력할때
+# Draw.MolToFile(,'파일명')
+
+## ms[1]이라는 분자를 png 파일 형식으로 내보낸다. 
+Draw.MolToFile(ms[1],'cdk2_mol2.o.png') 
+
+2. 여러개의 분자 구조를 한 파일에 그리기
+# Draw.MolsToGridImage 함수 이용
+img=Draw.MolsToGridImage(ms[:8],
+                         molsPerRow=4, # 한 행에 몇 개의 분자를 그릴 것인지? 
+                         subImgSize=(200,200), # 각 이미지의 크기. 
+                         legends=[x.GetProp("_Name") for x in ms[:8]]) # 밑에 설명을 어떻게 달 것인지. string("_Name")의 리스트 받는다. 
+
+2-1) 공통 구조를 이용해서 정렬하기
+2-1-1) core structure 지정
+# 'HasSubstructMatch' method 사용
+subms = [x for x in ms if x.HasSubstructMatch(p)]
+
+2-1-2) core를 이용하여 정렬하기
+# GenerateDepictionMatching2DStructure 사용
+AllChem.Compute2DCoords(p)
+
+# subms에 존재하는 분자(core structure를 가지는)를 하나씩 꺼낸다.
+for m in subms:
+    _ = AllChem.GenerateDepictionMatching2DStructure(m,p)
+
+# 14개의 공통된 코어 구조를 가진 분자의 그림 생성. 
+img=Draw.MolsToGridImage(subms,
+                         molsPerRow=3,
+                         subImgSize=(400, 400),
+                         legends=[x.GetProp("_Name") for x in subms])
+
+2-2) 임의의 label과 함께 출력
+# SetProp 함수로 property(name) 설정
+
+## m.SetProp("LogP", f"logP: {logp:.3f}")
+from rdkit.Chem.Crippen import MolLogP
+for m in subms:     # subms에 있는 분자들을 하나씩 꺼내서
+    logp = MolLogP(m)     # MolLopP() 함수에 넣으면 logp가 return
+    print(logp)     # logp 출력
+    m.SetProp("LogP", f"logP: {logp:.3f}") # property 설정할 때는 string(글자 데이터)으로 넣어주어야 한다. 
+
+## x.GetProp() 괄호 속 label 이름 적기
+img=Draw.MolsToGridImage(subms,
+                         molsPerRow=4,
+                         subImgSize=(300, 300),
+                         legends=[x.GetProp("LogP") for x in subms])
+img
+++ 추가 정보 ++
+문법: f-string
+f"logP: {logp:.3f}"
+
+f: 문자 시작 따옴표 앞에 붙인다. "이 문자열 안에 변수가 들어갈거야"라고 파이썬에게 알려주는 신호.
+
+{logp}: 중괄호{} 안에 변수 이름을 넣으면, 그 자리에 실제 변수 값이 치환되어 들어간다.
+
+:.3f: 변수의 출력 형식을 지정하는 포맷터로
+
+.3: 은 소수점 아래 세 자리까지 포시해라.
+
+f: 실수(Float) 형실으로 보여줘라.
+
+
+3. Adavnced drawing
+# Customized picture를 만들때 아래의 두 가지 class 사용 가능
+1) rdMolDraw2D.MolDraw2DSVG --> SVG 파일을 만들 때.
+2) rdMolDraw2D.MolDraw2DCairo --> PNG 파일을 만들 때.
+
+3-1) 특정 구조에 highlight 추가
+# rdkit.Chem.Draw 모듈에서 'rdMolDraw2D'를 이용
+from rdkit.Chem.Draw import rdMolDraw2D
+
+# substructure match를 찾을때
+=> 화학 정보학(Cheminformatics)에서 거대한 분자 데이터베이스 내에서 특정 분자 구조(Substructure)를 포함하는 화합물만을 찾아내는 검색 방식
+hit_ats = list(mol.GetSubstructMatch(patt))
+
+# substructure match(parttern)에 해당하는 bond 찾기
+hit_bonds = []
+for bond in patt.GetBonds():     # bond에 해당하는 것들 중
+    aid1 = hit_ats[bond.GetBeginAtomIdx()]     # bond가 시작하는 atom의 index
+    aid2 = hit_ats[bond.GetEndAtomIdx()]       # bond가 끝나는 atom의 index
+    hit_bonds.append(mol.GetBondBetweenAtoms(aid1,aid2).GetIdx())     # atom idx 1(aid1)과 atom idx 2(aid2) 사이의 bond를 가져오고, 그 인덱스를 얻어낸다.(GetIdx())
+print(hit_bonds)
+
+3-2) 특정 구조에 highlight 추가한 분자를 그림으로 출력
+# SVG 파일로 저장하기 위해서 'rdMolDraw2D.MolDraw2DSVG' 사용
+## d라는 canvas 생성
+d = rdMolDraw2D.MolDraw2DSVG(500, 500) 
+=> PNG 로 저장할때 오른쪽 method 사용 'MolDraw2DCairo'
+
+# 실제 그림을 그리는 method
+rdMolDraw2D.PrepareAndDrawMolecule(d, mol, highlightAtoms=hit_ats,
+                                    highlightBonds=hit_bonds)
+d.FinishDrawing()
+
+# SVG 파일을 그림으로 그리고 싶을때
+from IPython.display import SVG
+SVG(d.GetDrawingText())
+
+3-3) SVG 파일로 저장
+with open("data/a.svg", "w") as fp:
+    fp.write(d.GetDrawingText())
+
+4. 원자와 결합에 주석 달기
+# atomNote와 bondNote라는 이름의 property를 지정함으로써 표시 가능
+
+d = rdMolDraw2D.MolDraw2DCairo(250, 200) # PNG 파일로 만들겠다. 
+mol.GetAtomWithIdx(2).SetProp('atomNote', 'foo')   # 2번 atom의 atomNote라는 property를 foo로 정의
+mol.GetBondWithIdx(0).SetProp('bondNote', 'bar')   # 0번에 해당하는 bond의 bondNote라는 property를 bar로 정의
+d.drawOptions().addStereoAnnotation = True   # 옵션: addStereoAnnotation를 통해 이성질 표기
+d.drawOptions().addAtomIndices = True     # 옵션: addAtomIndices를 통해 atom index 표기
+d.DrawMolecule(mol)     # d(PNG file로 변환된 분자)를 실제 draw
+d.FinishDrawing()     # d 마치기
+d.WriteDrawingText('data/atom_annotation_1.png')     # PNG file의 경우 전과 다게 WriteDrawingTex()를 사용하여 파일 생성
+
+
 < 9 강 >
 < 10 강 >
