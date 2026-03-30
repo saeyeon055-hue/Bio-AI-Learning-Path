@@ -85,8 +85,104 @@ img=Draw.MolsToGridImage(ms[:8],
                          legends=[x.GetProp("_Name") for x in ms[:8]]) # 밑에 설명을 어떻게 달 것인지. string("_Name")의 리스트 받는다. 
 
 2-1) 공통된 구조를 이용해서 정렬하기
+- 공통된 구조를 core structure라 부른다.
+- 특정 core 구조를 가지는 분자만 선택.
+- Mol-type class의 HasSubstructMatch 메소드를 이용해서 특정 core 구조를 가지는지 알 수 있다.
+
+2-1-1) core structuure 지정
+# core structure 지정
+p = Chem.MolFromSmiles('[nH]1cnc2cncnc21')
+
+subms = [x for x in ms if x.HasSubstructMatch(p)]
+
+2-1-2) core를 이용하여 정렬하기
+=> GenerateDepictionMatching2DStructure 사용
+
+AllChem.Compute2DCoords(p)
+# subms에 존재하는 분자(core structure를 가지는)를 하나씩 꺼낸다.
+for m in subms:
+    _ = AllChem.GenerateDepictionMatching2DStructure(m,p)
+
+## 14개의 공통된 코어 구조를 가진 분자의 그림 생성. 
+img=Draw.MolsToGridImage(subms,
+                         molsPerRow=3,
+                         subImgSize=(400, 400),
+                         legends=[x.GetProp("_Name") for x in subms])
+
+## 위의 코드에서 옵션만 바꿔서 수행
+img=Draw.MolsToGridImage(subms,
+                         molsPerRow=4,
+                         subImgSize=(300, 300),
+                         legends=[x.GetProp("_Name") for x in subms])
+img
 
 2-2) 임의의 label과 함께 출력하기
+- 기존에는 legends=[x.GetProp("_Name") for x in subms 을 통해 리스트에 있는 label 그대로를 사용함
+- SetProp 함수로 property(name) 설정 m.SetProp("LogP", f"logP: {logp:.3f}")
+
+from rdkit.Chem.Crippen import MolLogP
+for m in subms:     # subms에 있는 분자들을 하나씩 꺼내서
+    logp = MolLogP(m)     # MolLopP() 함수에 넣으면 logp가 return
+    print(logp)     # logp 출력
+    m.SetProp("LogP", f"logP: {logp:.3f}") # property 설정할 때는 string(글자 데이터)으로 넣어주어야 한다. 
+
+# x.GetProp() 괄호 속 label 이름 적기
+img=Draw.MolsToGridImage(subms,
+                         molsPerRow=4,
+                         subImgSize=(300, 300),
+                         legends=[x.GetProp("LogP") for x in subms])
+img
 
 3. Advaced drawing
+
 3-1) 특정 구조에 highlight 추가
+from rdkit.Chem.Draw import rdMolDraw2D
+
+smi = 'c1cc(F)ccc1Cl'
+mol = Chem.MolFromSmiles(smi)
+patt = Chem.MolFromSmarts('ClccccF')
+
+# substructure match를 찾을때 => 화학 정보학(Cheminformatics)에서 거대한 분자 데이터베이스 내에서 특정 분자 구조(Substructure)를 포함하는 화합물만을 찾아내는 검색 방식
+hit_ats = list(mol.GetSubstructMatch(patt))
+
+# substructure match(parttern)에 해당하는 bond 찾기
+hit_bonds = []
+for bond in patt.GetBonds():     # bond에 해당하는 것들 중
+    aid1 = hit_ats[bond.GetBeginAtomIdx()]     # bond가 시작하는 atom의 index
+    aid2 = hit_ats[bond.GetEndAtomIdx()]       # bond가 끝나는 atom의 index
+    hit_bonds.append(mol.GetBondBetweenAtoms(aid1,aid2).GetIdx())     # atom idx 1(aid1)과 atom idx 2(aid2) 사이의 bond를 가져오고, 그 인덱스를 얻어낸다.(GetIdx())
+print(hit_bonds)
+
+3-2) 특정 구조에 highlight 추가한 분자 그림으로 출력
+# d라는 canvas 생성
+d = rdMolDraw2D.MolDraw2DSVG(500, 500) # or MolDraw2DCairo to get PNGs
+
+# 실제 그림을 그리는 method
+rdMolDraw2D.PrepareAndDrawMolecule(d, mol, highlightAtoms=hit_ats,
+                                    highlightBonds=hit_bonds)
+
+# FinishDrawing 메쏘드를 불러야 그림 완성됨.
+d.FinishDrawing()
+
+# SVG 파일을 그림으로 그리고 싶을때
+from IPython.display import SVG
+SVG(d.GetDrawingText())
+
+3-3) SVB 파일로 저장
+with open("data/a.svg", "w") as fp:
+    fp.write(d.GetDrawingText())
+
+4. 원자와 결합에 주석 달기
+=> atomNote와 bondNote 라는 이름의 property를 지정함으로서 표시 가능
+mol = Chem.MolFromSmiles('Cl[C@H](F)NC\C=C\C')
+
+d = rdMolDraw2D.MolDraw2DCairo(250, 200) # PNG 파일로 만들겠다. 
+mol.GetAtomWithIdx(2).SetProp('atomNote', 'foo')   # 2번 atom의 atomNote라는 property를 foo로 정의
+mol.GetBondWithIdx(0).SetProp('bondNote', 'bar')   # 0번에 해당하는 bond의 bondNote라는 property를 bar로 정의
+d.drawOptions().addStereoAnnotation = True   # 옵션: addStereoAnnotation를 통해 이성질 표기
+d.drawOptions().addAtomIndices = True     # 옵션: addAtomIndices를 통해 atom index 표기
+d.DrawMolecule(mol)     # d(PNG file로 변환된 분자)를 실제 draw
+d.FinishDrawing()     # d 마치기
+d.WriteDrawingText('data/atom_annotation_1.png')     # PNG file의 경우 전과 다게 WriteDrawingTex()를 사용하여 파일 생성
+
+파일로 저장됨.
