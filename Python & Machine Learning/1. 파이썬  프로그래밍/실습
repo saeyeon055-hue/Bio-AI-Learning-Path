@@ -1,0 +1,99 @@
+< 2 강 >
+1. 반지름이 5인 원의 면적과 둘레를 계산하시오.
+원주율은 3.14로 함
+
+# my_answer
+r=5
+area=3.14*r**2
+cicrum=2*3.14*r
+area, cicrum
+
+# 정답
+r=5
+pi=3.14
+area=pi*5**2
+cicrum=2*pi*r
+area, cicrum
+
+ 2. 456분은 몇 시간 몇 분인지 계산하시요.
+
+# my_answer
+h=456/60
+m=456%60
+h, m
+
+# 정답
+a=456
+h=456/60
+m=456%60
+int(h), m
+
+3. 복소수 1+3i와 2+1i의 합을 계산하고, 계산 결과가 3+4i가 맞는지 결정하는 프로그램을 작성하시오.
+
+# my_answer
+a=(1+3j)+(2+1j)
+b=3+4j
+if a==b:
+    print("True")
+else:
+    print("False")
+
+# 정답
+a=1+3j
+b=2+1j
+c=a+b
+d=(c==3+4j)
+c, d
+
+
+< 3 강 >
+1. 아래와 같은 리스트의 내용을 역순으로 출력하는 프로그램 작성
+nums = [1,2,3,4,5]
+strs = ['abc', 'def', 'ghi']
+
+# my_answer
+nums = [1,2,3,4,5]
+strs = ['abc', 'def', 'ghi']
+
+nums.reverse()
+strs.reverse()
+
+nums, strs
+
+
+# 정답
+nums = [1,2,3,4,5]
+strs = ['abc', 'def', 'ghi']
+
+print(nums[::-1],strs[::-1])
+
+
+2. 다음과 같은 학점 데이터를 딕셔너리에 저장한 후, 이름 순으로 첫번째 학생의 학점을 출력하는 프로그램 작성
+"홍길동":3.4, "임꺽정":4.0, "김철수":2.8, "이영희:3.9
+
+# my_answer
+d = {"홍길동":3.4, "임꺽정":4.0, "김철수":2.8, "이영희":3.9}
+
+s_list=list(d)
+s = s_list.sort()
+print(s)
+
+# 정답
+# 정답
+scores={"홍길동":3.4, "임꺽정":4.0, "김철수":2.8, "이영희":3.9}
+
+data = scores.keys()  # data에는 홍길도, 임꺽정, 김철수, 이영희 가 들어있음
+data_list=list(data)
+data_list.sort()  # sort(오름차순)
+print(data_list)
+
+key=data_list[0]   # 1번째 학생의 key
+value=scores[key]   # scores라는 dictionary에 key를 입력하면 value 얻을 수 있다.
+print(key, value)
+
+or
+
+# get 함수를 통해 key에 해당하는 value return 가능
+key=data_list[0]
+g=scores.get(key)
+print(key, g)
