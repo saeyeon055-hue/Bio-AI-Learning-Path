@@ -1,0 +1,147 @@
+<2 강>
+
+1. class vs object
+class: 자료에 대한 추상적 정의
+[world] 사람, 자동차
+[Program] integer, float
+
+object: class를 구체화한 것
+[world] 사람 홍길동, 자동차 소나타
+[Program] integer a, string s1
+
+
+객체(object) = 자료 + 메소드(method)
+- method: 자료가 할 수 있는 일, 자료의 기능(function)
+* method 사용법: 자료.메소트 *
+  
+  ## 예시
+  s1 = "ABC"
+  s2 = s1.lower()
+
+  
+2. 연산자
+- 자료에 대한 연산을 수행하는 심볼
+  수치: +, -, *, /, **, %
+  논리: 'and', 'or', 'not'
+
+3. 형 변환 (type conversion)
+* 형식: type(input) *
+
+  ## 예시
+    int(3.14) => float 3.14를 int 3으로 변환
+    float(5) => in 5를 float 5.0으로 변환
+    str(3.14) => float 3.14를 문자열 "3.14"로 변환
+
+
+
+
+< 3강 >
+
+1. 리스트(list)
+* 형식: [자료, 자료, ...] *
+  ## 예시
+    a = [] 
+    nums=[1,2,3.14,4,5]
+
+1-1) 인덱싱(indexing) 연산
+* 형식: 변수[위치]
+  ## 예시
+    idx1 = nums[1]
+    idx2 = nums[-2]
+
+1-2) 슬라이싱(slicing)
+- 리스트 내 특정 위치의 자료를 끊어 오는 것
+* 형식: [시작:끝:간격]
+  ## 예시
+    nums =[1,2,3.14,4,5]
+    nums[:] => 처음부터 끝까지 출력
+    nums[0:2] => 처음부터 두번째까지 출력
+    nums[::2] => 처음부터 끝까지 간격 2로 출력
+    nums[:-1] => 처음부터(-5) -2번째까지 출력
+    nums[-3:] => 3번째부터 끝까지 출력
+    nums[::-1] => 간격이 -1이 의미하는 건 뒤부터 가져오라는 뜻
+
+1-3) 연산자: +, *, in
+  + : nums = nums+[6,7]
+  => 리스트에서 '+'는 확장의 의미. nums=[1,2,3.14,4,5,6,7]
+  * : nums = [1,2]*3
+  => 리스트에서 '*'는 반복의 의미. nums=[1,2,1,2,1,2]
+  in : 3.14 in nums
+  => 리스트에서 'in'은 존재의 의미. True or False 로 출력
+
+1-4) 리스트 내장 함수
+# range
+## 예시
+  nums = range(5)
+
+# sum
+## 예시
+  s = sum(nums)
+
+# max
+## 예시
+  m = max(nums)
+
+1-5) 대표적인 리스트 메소드
+- a.append(x)
+  : 리스트 a의 마지막에 x추가
+- a.sort()
+  : 리스트 a를 오름차순으로 정렬; 내림차순:a.sort(reverse=True)
+- a.reverse()
+  : 리스트 a의 순서를 거꾸로 만든다.
+- a.index(x)
+  : 리스트 a에서 x를 찾아서 그 위치 반환
+- a.insert(i,x)
+  : 리스트 a에서 i위치에 x 삽입
+- a.remove(x)
+  : 리스트 a에서 처음 나오는 x 삭제
+- a.pop()
+  : 리스트 a의 맨 마지막 요소 반환하고 마지막 요소 삭제
+- a.count(x)
+  :리스트 a안에 x가 몇 개 있는지를 반환
+- a.extend(l)
+  :리스트 a에 리스트 l을 더함(확장)
+
+
+2. Tuple
+- 리스트와 유사하지만 immutable한 자료
+* 형식: (자료, 자료, ...) *
+  ## 예시
+  tu=()
+  nums=(1,2,3)
+  colors=('red', 'green','blue')
+
+- 인덱싱, 슬라이싱: 리스트와 동일
+  ## 예시
+  (1,2,3,4)[0] => 1
+  (1,2,3,4)=> (2,3)
+
+
+3. Dictionary
+- key, value 형태의 자료를 담을 수 있는 자료형
+* 형식: {key:value, key:value,...}
+  ## 예제
+  {}, dict()
+  d={'pi':3.14.'e':2.7}
+  d=dict{pi=3.14, e=2.7}
+  d=dict([('pi',3.14),('e',2.7]))
+
+  ## 인덱싱 예제
+  d['pi']
+  d['pi']=3.0     # mutable 하다.
+  d['zero']=0.0     # dictionary 에 값 추가 d['key'] =value
+  d[(1,2)]="one and two"
+
+3-1) 대표적인 딕셔너리 메소드(함수)
+- a.keys()
+    : 딕셔너리 a의 key들을 모아놓은 dict_keys를 return
+- a.values()
+    : 딕셔너리 a의 value들을 모아놓은 dict_values를 return
+- a.items()
+    : 딕셔너리 a의(key, value) 튜플을 모아놓은 dic_items를 return
+- a.clear()
+    : 딕셔너리 a의 모든 key:value 쌍들을 삭제하고 딕셔너리를 초기화
+- a.get(x)
+    : 딕너리 a의 key가 x인 것의 value를 돌려줌
+
+    
