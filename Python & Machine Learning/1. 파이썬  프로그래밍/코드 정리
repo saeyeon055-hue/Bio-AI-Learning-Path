@@ -404,3 +404,42 @@ print(l1,l2)
 l1  =[10]
 l2 =l1[:]     # 모든 데이터를 copy 해주면 주소를 할당하는게 아니라 값을 할당하게 된다.
 print(l1,l2)
+
+
+<6 강>
+1. 함수(function)
+1-1) 함수
+특정 기능을 하도록 설계된 단위 프로그램
+# 형식
+- 정의
+def function_name(arg1, arg2,...)
+""" doc string"""
+...
+return ...
+
+- 호출
+ret = function_naver(arg_value1,arg_value2)
+
+## 예시
+# sum 이라는 함수를 정의한 것으로 x,y,z는 아래에서 a,20,b에 해당
+def sum(x,y):
+    z=x+y
+    return z
+
+a=10
+b=sum(a,20)
+print(b)
+
+## 리스트 인자
+def list_add1(list):
+    return sum(list)
+
+def list_add2(list):
+    sum=0
+    for item in list:
+        sum +=item   # sum = sum + item
+    return sum
+
+nums=[1,2,3]
+print(list_add1(nums))
+print(list_add2(nums))
