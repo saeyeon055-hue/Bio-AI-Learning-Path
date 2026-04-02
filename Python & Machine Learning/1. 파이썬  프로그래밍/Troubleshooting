@@ -19,3 +19,20 @@ s = k_list.sort()
 print(s[0])
 
 오류 원인 => sort 함수는 "그 자리에서 원본을 수정"하고 끝나는 함수라서 k_list를 출력해야함
+
+
+# 리스트 인자
+def list_add1(list):
+    return sum(list)
+
+def list_add2(list):
+    sum=0
+    for item in list:
+        sum +=item   # sum = sum + item
+    return sum
+
+nums=[1,2,3]
+print(list_add1(nums))
+print(list_add2(nums))
+
+오류 원인 => sum이 이전 코드에서 이미 정의된 함수이기 때문 (함수명으로는 변수 사용하지 말기)
