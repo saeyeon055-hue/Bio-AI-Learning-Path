@@ -171,3 +171,177 @@ str="""   죽는 날까지 하늘을 우러러
 str= str.strip()
 str= str.replace("나","너")
 print(str)
+
+
+<5강>
+
+1. 국어, 영어, 수학 점수를 입력 받아서 평균을 계산하고 평균에 따라 등급을 부여하는 프로그램 작성
+실햄 예 국어=90 영어=85 수학=72 평균은 82.3이며, 등급은 B입니다.
+
+# my_answer
+# 점수 입력 받기
+score= int(input('국어=','영어=','수학='))
+# 평균 계산하기
+ave=score.average()
+# 평균에 따라 등급 부여하기 (if)
+if 90< ave< 100:
+    print('A')
+elif 80< ave <90:
+    pritn('B')
+elif 70<ave<80:
+    print('C')
+elif 60<ave<70:
+    print('D')
+else:
+    print('F')
+
+# 정답
+kor =float(input('국어='))
+eng =float(input('영어='))
+mat =float(input('수햑='))
+
+avg =(kor+eng+mat)/3.0
+
+if 90.0<= avg<= 100.0:
+    grade ='A'
+elif 80.0<= avg <90.0:
+    grade ='B'
+elif 70<=avg<80:
+    grade ='C'
+elif 60<=avg<70:
+    grade ='D'
+elif 0<= avg<60:
+    grade = 'F'
+else:
+    grade =NA
+
+print("평균은 {0:.1f}이며, 등급은 {1:s}입니다.". format(avg,grade))
+
+2. 라인 수를 입력 받아서 아래와 같은 모양을 출력하는 프로그램 작성
+# 정답
+num =int(input("Lines"))
+
+for i in range(0,num):
+    str = ""
+    for j in range(0,num):
+        if (i==j) or ((num-1)-i ==j):
+            str +="1"
+        else:
+            str +="0"
+    print(str)
+
+
+3. 반복문과 조건문을 사용하여 입력된 정수들 중에 가장 큰 값을 출력하는 프로그램 작성
+Numbers? 10 456 87 78
+Max = 456
+
+# 정답
+# split 후, integer로 변환. 그리고 그중에 가장 큰 값을 출력
+str=input("Number?")
+strlist=str.split()
+
+max=int(strlist[0])
+for strl in strlist[1:]:
+    num=int(strl)
+    if (num>max):
+        max=num
+
+print("Max=",max)
+
+
+<6강>
+1. 입력받은 문자열을 다음과 같은 방법으로 암호화하고 복호화하는 프로그램을 작성하시오.
+암호화
+
+공백(스페이스, 탭)으로 분리하고 역순으로 배치
+아스키 코드를 key만큼 증가
+복호화
+
+아스키 코드를 key 감소
+공백(스페이스, 탭)으로 분리하고 역순으로 배치
+예제: key가 1인 경우
+
+"abc def" -> 암호화 -> 'efg!bcd'
+'efg!bcd'-> 복호화 -> 'abc def'
+
+# 정답
+def conv_asc(str,num):
+    new_str = ''
+    for i in str:
+        code=ord(i)     # ord 함수: 문자를 아스키 코드로 변환
+        new_str += chr(code+num)     # chr 함수: 아스키 코드를 다시 문자로 변환
+    return new_str
+
+def enc(str, key):
+    list = str.split()
+    list = list[::-1]    # list.reverse(0
+    new_str=''.join(list)
+    return conv_asc(new_str, key)
+
+def dec(str, key):
+    str=conv_asc(str, key*-1)
+    list=str.split()
+    list=list[::-1]
+    new_str=''.join(list)
+    return new_str
+
+str= 'abc def'
+enc_str=enc(str,1)
+print("\""+enc_str+'\' is encoded into \''+enc_str+'\'')
+
+dec_str=dec(enc_str,1)
+print("\""+enc_str+'\' is decoded into \''+dec_str+'\'')
+
+2. n명의 이름과 전화번호를 입력받아 전화번호 사전을 만들고, 이름과 전화번호로 검색하느 프로그램 작성
+# 정답
+def search_phone(book, name):
+    num = book[name]
+    if num:
+        return num
+    else:
+        return 'none'
+
+n=int(input('사람 수?'))
+
+book = dict()
+
+for i in range(n):
+    k = input('name=')
+    v = input('number=')
+    book[k]=v
+
+k = input('검색할 이름?')
+v = search_phone(book,k)
+print("{0:s}'s phone number is {1:s}".format(k,v))
+
+
+<7강>
+1. 명령행 인자(프로그램명 제외)를 입력 받아 모두 대문자로 변환하는 프로그램을 작성하시오.
+import sys
+
+str_list =[]
+
+for arg in sys.argv:
+    str_list.append(arg.upper())
+
+print(" ". join(str_list))
+
+2. "README.txt" 파일에 있는 각 단어의 수를 계산하여 출력하는 프로그램 작성
+f = open("README.txt",'r')
+
+dic = {}
+
+for line in f:
+
+    line =line.strip()
+    words = line.split()
+
+    for w in words:
+
+        if w in dic:
+            dic[w] +=1
+        else:
+            dic[w] =1
+
+for w in dic:
+    print(w, dic[w])
