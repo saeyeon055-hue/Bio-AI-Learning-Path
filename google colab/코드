@@ -1,0 +1,18 @@
+# 1. smina 다운로드 및 권한 설정
+!wget https://github.com -O smina  # gnina는 smina의 최신 확장판입니다.
+!chmod +x smina
+
+
+# 2. condacolab 설치
+!pip install -q condacolab
+import condacolab
+condacolab.install()
+
+
+# 3. 1LFG(락토페린) PDB 파일을 코랩 환경으로 직접 다운로드
+!wget https://rcsb.org
+
+
+# 구글 드라이브 마운트 (구글 드라이브 폴더와 연결하면 드라이브 안에 파일을 저장할 수 있고 세션이 끊겨도 파일은 그대로 남는다.)
+from google.colab import drive
+drive.mount('/content/drive')
