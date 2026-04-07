@@ -228,3 +228,193 @@ active_lysines = [(num, exp) for num, exp in lysine_results if exp >= 0.4]
 print(f"✅ 총 {len(active_lysines)}개의 반응 가능 Lysine이 발견되었습니다.")
 for num, exp in active_lysines:
     print(f"Lysine {num}번 (노출도: {exp:.2f})")
+
+
+# 5. Lf, oGL docking
+
+## 5-1. Smina 공식 설치 
+!conda install -c conda-forge smina -y
+
+## 5-2. 설치 확인 (성공하면 smina 버전 정보 뜸.)
+!smina --version
+
+## 5-3. Lf의 Lys 노출도 높은 순서로 x, y, z 좌표 추출
+import os
+
+# --- [설정: 파일 경로 및 타겟 Lysine 번호] ---
+base_path = "/content/drive/MyDrive/Docking_Project"
+receptor_path = os.path.join(base_path, "1LFG.pdbqt")
+
+# Rank 1~20번 Lysine 번호 리스트
+target_lysine_numbers = [
+    691, 416, 630, 676, 579, 661, 484, 28, 280, 516,
+    100, 73, 243, 567, 454, 296, 564, 656, 285, 241
+]
+
+def extract_all_lys_coords(pdbqt_path, lys_list):
+    if not os.path.exists(pdbqt_path):
+        print(f"❌ 파일을 찾을 수 없습니다: {pdbqt_path}")
+        return
+
+    results = []
+    found_count = 0
+
+    > 파일 읽기
+    with open(pdbqt_path, 'r') as f:
+        lines = f.readlines()
+
+    print(f"🔍 {len(lys_list)}개의 Lysine 좌표 추출을 시작합니다...\n")
+
+    for rank, res_num in enumerate(lys_list, 1):
+        coord_found = False
+        for line in lines:
+            if line.startswith("ATOM"):
+                try:
+                    # PDBQT 표준 컬럼 (22-26: 잔기번호, 12-16: 원자이름)
+                    current_res_num = int(line[22:26].strip())
+                    atom_name = line[12:16].strip()
+
+                    if current_res_num == res_num and atom_name == "NZ":
+                        # X, Y, Z 좌표 (30-38, 38-46, 46-54)
+                        x = float(line[30:38].strip())
+                        y = float(line[38:46].strip())
+                        z = float(line[46:54].strip())
+
+                        results.append((rank, res_num, x, y, z))
+                        print(f"✅ Rank {rank} (Lys{res_num}): ({x}, {y}, {z}) 추출 성공")
+                        coord_found = True
+                        found_count += 1
+                        break
+                except:
+                    continue
+
+        if not coord_found:
+            print(f"⚠️ Rank {rank} (Lys{res_num}): NZ 원자를 찾지 못했습니다.")
+            results.append((rank, res_num, None, None, None))
+
+    > --- [최종 출력 결과 생성] ---
+    print("\n" + "="*50)
+    print("📍 아래 리스트를 복사해서 다음 단계 코드에 넣어주세요!")
+    print("="*50 + "\n")
+    print("lys_coords_list = [")
+    for res in results:
+        print(f"    {res},")
+    print("]")
+    print(f"\n총 {found_count}개의 좌표 추출 완료.")
+
+> 코드 실행
+extract_all_lys_coords(receptor_path, target_lysine_numbers)
+
+## 5-4. Lf에 oGL 하나 docking (result:Lf-GL_1)
+import os
+
+### 5-4-1. 경로 및 좌표 설정
+base_path = "/content/drive/MyDrive/Docking_Project"
+receptor = os.path.join(base_path, "1LFG.pdbqt")
+ligand = os.path.join(base_path, "ox_GL.pdbqt")
+output_dir = os.path.join(base_path, "Sequential_Results")
+os.makedirs(output_dir, exist_ok=True)
+
+rank = 1
+res_num = 691
+cx, cy, cz = -11.743, 9.78, 6.633
+temp_out = os.path.join(output_dir, f"temp_dock_{rank}.pdbqt")
+
+print(f"🚀 Round {rank}: Lysine {res_num}번 도킹 시작...")
+
+### 5-4-2. 도킹 실행 (앞에 ! 추가 및 변수 앞에 $ 추가)
+!smina -r "$receptor" -l "$ligand" --center_x $cx --center_y $cy --center_z $cz --size_x 30 --size_y 30 --size_z 30 --exhaustiveness 8 --num_modes 1 -o "$temp_out"
+
+## 5-4-3. 에너지 추출 및 출력
+if os.path.exists(temp_out):
+    with open(temp_out, 'r') as f:
+        for line in f:
+            if "REMARK VINA RESULT" in line:
+                print(f"\n✅ 도킹 성공! {line.strip()}")
+                break
+else:
+    print("\n❌ 결과 파일이 생성되지 않았습니다. smina 실행 로그를 확인하세요.")
+
+import os
+
+## 5-5. 저장
+--- [1. 경로 및 설정] ---
+base_path = "/content/drive/MyDrive/Docking_Project"
+output_dir = os.path.join(base_path, "Sequential_Docking_simul")
+os.makedirs(output_dir, exist_ok=True)
+
+### 5-5-1. 파일 경로 (방금 성공한 파일들)
+original_receptor = os.path.join(base_path, "1LFG.pdbqt")
+temp_dock_1 = os.path.join(base_path, "Sequential_Results/temp_dock_1.pdbqt") # 아까 저장된 결과
+next_complex = os.path.join(output_dir, "LfGL_1.pdbqt")
+
+### 5-5-2. --- [2. 파일 병합 (Lf + 1st oGL)] ---
+print(f"📦 Round 1 결합체(LfGL_1) 생성 중...")
+
+with open(next_complex, 'w') as f_new:
+    # 기존 단백질 복사 (마지막 END 태그 제외)
+    with open(original_receptor, 'r') as f_rec:
+        for line in f_rec:
+            if not any(tag in line for tag in ["END", "MODEL", "TORSDOF"]):
+                f_new.write(line)
+
+    # 도킹된 첫 번째 oGL 추가 (ATOM 정보만)
+    with open(temp_dock_1, 'r') as f_dock:
+        f_new.write("\nREMARK oGL_1_at_Lys691_Affinity_-6.8\n")
+        for line in f_dock:
+            if line.startswith(("ATOM", "HETATM")):
+                f_new.write(line)
+    f_new.write("\nEND\n")
+
+print(f"✅ 생성 완료: {next_complex}")
+
+### 5-5-3. docking 및 저장
+import os
+
+# --- [1. 경로 및 좌표 설정] ---
+base_path = "/content/drive/MyDrive/Docking_Project"
+output_dir = os.path.join(base_path, "Sequential_Docking_simul")
+
+# 수용체: oGL 2개가 이미 붙은 LfGL_2
+receptor_now = os.path.join(output_dir, "LfGL_2.pdbqt")
+ligand = os.path.join(base_path, "ox_GL.pdbqt")
+
+# Round 3 설정 (Lys 630)
+rank = 4
+res_num = 673
+cx, cy, cz = 3.842, 4.398, 10.828
+temp_out = os.path.join(output_dir, f"temp_dock_{rank}.pdbqt")
+final_complex = os.path.join(output_dir, f"LfGL_{rank}.pdbqt")
+
+# --- [2. 도킹 실행] ---
+print(f"🚀 Round {rank} (Lys {res_num}) 도킹 시작...")
+!smina -r "$receptor_now" -l "$ligand" --center_x $cx --center_y $cy --center_z $cz --size_x 30 --size_y 30 --size_z 30 --exhaustiveness 8 --num_modes 1 -o "$temp_out"
+
+# --- [3. 에너지 확인 및 병합 저장] ---
+if os.path.exists(temp_out) and os.path.getsize(temp_out) > 0:
+    energy = "N/A"
+    with open(temp_out, 'r') as f:
+        for line in f:
+            if "REMARK VINA RESULT" in line:
+                energy = line.split()[3]
+                print(f"\n✅ Round {rank} 에너지: {energy} kcal/mol")
+                break
+
+    print(f"📦 결합체 LfGL_{rank} 생성 중...")
+    with open(final_complex, 'w') as f_out:
+        # 기존 LfGL_2 복사
+        with open(receptor_now, 'r') as f_in:
+            for line in f_in:
+                if "END" not in line and "MODEL" not in line:
+                    f_out.write(line)
+
+        # 새로운 oGL 추가
+        with open(temp_out, 'r') as f_dock:
+            f_out.write(f"\nREMARK Adding oGL_{rank} at Lys{res_num}_Affinity_{energy}\n")
+            for line in f_dock:
+                if line.startswith(("ATOM", "HETATM")):
+                    f_out.write(line)
+        f_out.write("\nEND\n")
+    print(f"✅ 생성 완료: {final_complex}")
+else:
+    print("❌ 도킹 실패 또는 파일 생성 지연. 다시 시도해 주세요.")
