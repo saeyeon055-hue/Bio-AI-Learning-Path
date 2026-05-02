@@ -1,0 +1,238 @@
+1) DeepChem 설치
+!pip install deepchem
+
+
+2) 기본 옵션 불러오기
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+!pip install rdkit
+import deepchem as dc
+from rdkit import Chem
+from rdkit.Chem import Draw
+from rdkit.Chem.Draw import IPythonConsole
+from rdkit.Chem import Descriptors, Lipinski
+from rdkit.Chem import AllChem
+from rdkit import DataStructs
+
+
+> 화면에 그림으로 보이게 하기 위한 옵션
+IPythonConsole.ipython_useSVG=True
+
+> 고화질로 보이게 하는 옵션
+%config InlineBackend.figure_format = 'retina'
+
+# ChEMBL DB
+>> 신약개발과 관련된 공개 DB
+>> 무료로 접근 가능하고 검색 및 다운로드 지원
+>> 분자의 2D 구조, 측정된 특징들을 제공(logP, MW, Lipinski, etc)
+
+3) Chembl 데이터 가져오기 (웹 기반으로 데이터 읽기)
+!pip install chembl_webresource_client
+
+> 클라이언트 프로그램을 띄우는 역할
+from chembl_webresource_client.new_client import new_client
+
+4) new_client 를 이용해서 특정 키워드('coronavirus') 검색 후 데이터 프레임으로 가져오기
+target = new_client.target
+target_query = target.search('coronavirus')
+targets = pd.DataFrame.from_dict(target_query)
+print(targets.shape)
+targets
+
+5) 여러 결과 중 index 4에 있는 Single Protein 의 CHEMBL6066646에 관한 정보를 새로운 변수('wanted_target')로 입력
+wanted_target = targets.target_chembl_id[4]
+wanted_target
+
+6) 목적 변수 범주화
+>> 목적 변수로 standard_value를 선택
+>> 등급을 표시하기 위해 activity 컬럼 추가
+
+> 목적 변수의 범주화
+bioactivity_class = []
+for i in data.standard_value:
+  if float(i) >= 10000:
+    bioactivity_class.append("inactive")
+  elif float(i) <= 1000:
+    bioactivity_class.append("active")
+  else:
+    bioactivity_class.append("intermediate")
+
+data['activity']=bioactivity_class
+
+> 일부 컬럼만 사용하기
+data3 = data[['molecule_chembl_id','canonical_smiles','standard_value', 'activity']]
+data3.head(5)
+
+7) Lipinski's Rule
+>> Rule of five(RO5) 라고도 불리며 Drug likneness를 판단하는데 사용
+>> 1997년 Pfizer의 과학자 Christopher A. Lipinski는 구강복용하는 약물이 상대적으로 크기가 작고 지용성이라는 것을 관찰하여 이 규칙을 고안
+>> ADME(pharmacokinetic)에 기반한 프로파일
+>> Molecular weight < 500 Dalton
+>> Octanol-water partition coefficient (LogP) < 5
+>> Hydrogen bond donors < 5
+>> Hydrogen bond acceptors < 10
+
+8) 일부 Descriptor, Lipinski 데이터 추가하기
+from rdkit.Chem import Descriptors, Lipinski
+
+> 특성을 추가하는 함수 정의
+
+def get_descriptor(smile):
+  mol=Chem.MolFromSmiles(smile)
+
+  MolWt = Descriptors.MolWt(mol)
+  MolLogP = Descriptors.MolLogP(mol)
+  NumHDonors = Lipinski.NumHDonors(mol)
+  NumHAcceptors = Lipinski.NumHAcceptors(mol)
+
+  return (MolWt, MolLogP, NumHDonors, NumHAcceptors)
+
+> 데이터프레임(또는 시리즈)에 대해서 함수 get_descriptor()를 일괄 적용(apply)
+result = data3.canonical_smiles.apply(get_descriptor)
+
+> 추가할 특성값들을 포함하는 데이터 프레임 만들기
+columnNames=["MW","LogP","NumHDonors","NumHAcceptors"]
+data_add = pd.DataFrame(list(result.values), columns=columnNames)
+
+> 두 개의 데이터프레임 합치기
+data4 = pd.concat([data3, data_add], axis=1)
+data4.head(3)
+
+9) IC50
+>> IC50은 inhibitory concentration 50, 저해농도를 뜻한다
+>> 특정 생물학적 또는 생화학적 기능을 억제하는 물질의 효과를 측정하는데 사용
+>> 즉, A가 주는 반응이 100%라고 가정했을때, B가 이를 50% 억제할 수 있는 B의 농도를 A반응에 대한 B의 IC50이라고 한다
+>> IC50이 1.4μg/ml라면 어떤 반응을 50% 저해시키는데 필요한 농도는 1.4μg/ml임
+>> IC50의 로그값 -log10(IC50)를 pIC50으로 표현한다
+>> standard_value에  10−9 을 곱하여 nM에서 M 단위로 데이터를 변환
+
+> pIC50을 계산하는 함수
+def get_pIC50(input):
+  input = np.float(input)
+  if input > 100000000.:
+        input = 100000000.
+  return -np.log10(input*(10**-9)) # nM을 M 단위로
+
+  > standard_value 값에 위에서 정의한 함수 get_pIC50()를 적용(apply)
+data4['pIC50'] = data4.standard_value.apply(get_pIC50)
+data4[:3]
+
+10) 데이터 탐색
+> activity 값의 분포 보기
+data4.activity.value_counts().to_frame().plot(kind='bar')
+
+> 박스 플롯(activity에 대한 여러가지 특성 값들의 분포 탐색)
+def draw_boxes(x, y, data):
+  plt.figure(figsize=(6, 6))
+  sns.boxplot(x = x, y = y, data = data)
+  plt.xlabel(x, fontsize=14, fontweight='bold')
+  plt.ylabel(y, fontsize=14, fontweight='bold')
+  plt.show()
+
+> activity에 대한 여러가지 특성 값 분포 비교
+for y in ['pIC50', 'MW', 'LogP', 'NumHDonors', 'NumHDonors']:
+  draw_boxes(x = 'activity', y=y, data = data4)
+
+> 산포도 (스캐터 플롯, scatter plot) 그려서 두 변수의 관계 파악
+plt.figure(figsize=(6, 6))
+
+sns.scatterplot(x='MW', y='LogP', data=data4,
+   hue='activity', size='pIC50', edgecolor='black', alpha=0.7)
+
+plt.xlabel('MW', fontsize=14, fontweight='bold')
+plt.ylabel('LogP', fontsize=14, fontweight='bold')
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0)
+
+> Pair Plot (여러 변수에 대해서 모든 조합의 경우의 산포도를 그리는 도구)
+sns.pairplot(data=data4, hue='activity')
+plt.show()
+
+11) 데이터 저장
+>> csv 파일로 저장하기
+>> 디폴트로 인덱스도 값이 저장되는데, 인덱스를 저장하지 않으려면 index=False 지정
+data4.to_csv("corona_processed.csv", index=False)
+!head -5 corona_processed.csv
+
+12) Pubchem 에서 정보 얻기
+>> Pubchem 데이터 액세스를 위해서 pubchempy 라이브러리 설치 
+!pip install pubchempy as pcp
+
+13) properties 얻기
+> get_proterties 함수를 사용하여 다양한 속성을 얻을 수 있다.
+> 작업 경과 시간을 표시해주는 tqdm 라이브러리 사용
+from tqdm import tqdm
+all_data = []
+
+for i in tqdm(data4['canonical_smiles']):
+    props = pcp.get_properties(['MolecularFormula', 'MolecularWeight',
+                                'XLogP', 'ExactMass', 'MonoisotopicMass', 'TPSA', 'Complexity', 'Charge',
+                                'HBondDonorCount', 'HBondAcceptorCount', 'RotatableBondCount',
+                                'HeavyAtomCount', 'IsotopeAtomCount', 'AtomStereoCount',
+                                'DefinedAtomStereoCount', 'UndefinedAtomStereoCount', 'BondStereoCount',
+                                'DefinedBondStereoCount', 'UndefinedBondStereoCount', 'CovalentUnitCount',
+                                'Volume3D', 'XStericQuadrupole3D', 'YStericQuadrupole3D',
+                                'ZStericQuadrupole3D', 'FeatureCount3D', 'FeatureAcceptorCount3D',
+                                'FeatureDonorCount3D', 'FeatureAnionCount3D', 'FeatureCationCount3D',
+                                'FeatureRingCount3D', 'FeatureHydrophobeCount3D', 'ConformerModelRMSD3D',
+                                'EffectiveRotorCount3D', 'ConformerCount3D'], i, 'smiles')
+    all_data.append(props)
+
+  > 데이터 프레임으로 정리
+rows = []
+lenth = data4.shape[0]
+columns = all_data[0][0].keys()
+for i in range(lenth):
+    rows.append(all_data[i][0].values())
+props_df = pd.DataFrame(data=rows, columns=columns)
+props_df.head()
+
+14) MoleculeNet 데이터
+>> deepchem.molnet 모듈에서 MoleculeNet의 데이터를 다운로드하는 함수를 제공한다
+>> 여러 공개 DB를 기반으로 작성되었으며 700,000개 이상의 화합물이 포함되어 있음
+>> AUC-ROC, AUC-PRC, RMSE, MAE metric을 사용하여 성능 비교 평가를 수행할 수 있음 (벤치마크)
+
+15) Dataset 다운로드
+>> dc.molnet.load_XXX() 함수 사용
+>> load_delaney()를 사용하면 Delaney 용해도 dataset을 다운로드함
+>> 1128개 화합물의 용해도 데이터
+>> 다운로드시 원하는 feature를 선택할 수 있다
+
+>> load_xxx() 리턴 값
+>> tasks: 태스크 이름을 알려준다 (타겟 작업이 무엇인지. 하나 또는 복수)
+>> datasets: dc.data.Dataset 객체로서 (train, valid, test) 세 부분으로 나누어준다
+>> transformers: dc.trans.Transformer 객체로서 전처리 방법을 알려준다
+
+16) load_xxx() 옵션
+>> featurizer: ECFP, GraphConv, Weave, smiles2img 등
+>> splitter: None, index, random, scaffold, stratified 등
+
+
+17) dataset 타입
+>> DiskDataset은 하드디스크에 저장하고 액세스할 데이터셋이다.
+>> NumpyDataset 은 메인 메모리에 저장하고 사용할 데이터로 NumPy arrays 형식으로 저장된다
+>> ImageDataset은 디스크에 저장되는 이미지 데이터 형식이다
+>> dataset의 각 행(샘플)은 분자를 구분하며 다음의 값들을 갖는다
+  >> The features, referred to as X.
+  >> The labels, referred to as y.
+  >> The weights, referred to as w (이 샘플의 가중치를 표시)
+  >> An ID, is a unique identifier (여기서는 SMILES를 사용)
+
+18) 데이터를 읽는 다른 방법
+>> iterbatches(batch_size=100, epochs=10, deterministic=False)
+>> poch를 지정할 수 있으며, 읽을 때마다 순서를 랜덤하게 바꾼다
+>> o_dataframe()을 사용하면 데이터프레임으로 읽는다
+>> TensorFlow 타입, 즉 tensorflow.data.Dataset을 얻으려면 make_tf_dataset()를 사용한다
+>> Torch 타입의 torch.utils.data.IterableDataset을 얻으려면 make_pytorch_dataset()를 사용한다
+
+19) Datasets 생성하기
+>> 일반 ndarray 데이터를 DeepChem Dataset과 호환성을 갖는 dataset으로 만드는 것이 필요한 때가 있다.
+>> 이를 위해 NumpyDataset을 사용
+import numpy as np
+
+X = np.random.random((10, 5))
+y = np.random.random((10, 2))
+dataset = dc.data.NumpyDataset(X=X, y=y)
+print(dataset)
