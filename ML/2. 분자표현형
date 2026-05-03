@@ -1,0 +1,112 @@
+# 분자 표현형
+>> Data Representation
+>> RDKit을 이용해서 SMILES, Mol 파일, Fingerprint 등 화합물의 여러가지 표현형을 다루는 법을 배운다|
+>> RDKit은 화학물질의 여러 특성을 파악하고, 표현형을 바꾸고, 속성을 예측하는데 널리 사용되는 cheminformatics와 머신러닝용 패키지이다
+
+# 머신러닝과 데이터 표현형
+>> 현재 머신러닝(machine learning)이 인공지능(artificila intelligence)을 구현하는 주요 기술이다
+>> 머신러닝은 "데이터 기반"의 모델을 사용하며 데이터를 보고 학습을 하여 모델의 성능을 점차 높인다
+>> 신약 후보물질을 찾거나, 리드 최적화를 하는 과정은 분자, 단백질 등 대상 물질에서 구조적 또는 기능적 패턴을 잘 찾는 작업을 필요로 한다
+>> 이러한 "지능적인" 작업을 머신러닝에게 수행시킬 때 입력 (분자의 특성 등)을 얼마나 잘 표현해주는가에 따라 모델의 성능이 크게 달라진다
+>> 단순 작업인 "자동화"에서는 데이터 표현형이 대부분 미리 고정되어 있다
+
+# QSAR
+>> 분자의 특성(features, X)들로부터 분자의 물리적, 화학적, 생화학적인 속성값(property, y)을 예측하는데 머신러닝이 널리 도입되고 있다
+>> 머신러닝 예측 모델의 성능이 우수할수록 원하는 속성값을 갖는 분자를 찾거나 설계하는데 도움이 된다
+>> 이러한 작업을 QSPR (quantitative structure-property relationship) 또는 QSAR (quantitative structure-activity relationship) 분석이라고 한다
+>> 이를 위해 전통적으로는 화학적, 물리학적, 수학적인 이론에 근거해서 이러한 문제를 풀었으나 계산량이 많이 필요하며 수식 모델은 복잡한 실제 세계를 모델링하는데 한계가 있다
+
+# 분자 표현형
+>> 분자를 다루는 머신러닝의 성능을 높이려면 모델 입력(X)으로 사용하는 데이터 표현형(representation)을 잘 선택해야 한다
+>> 표현형은 분자의 고유한 특성을 숫자로 표현한 것이다
+>> 전통적으로는, X는 2차원 테이블 구조를 갖고 각 컬럼(특성)을 전문가가 직접 선택하는 방법을 사용한다
+>> 분자 표현형으로는 Descriptors, SMILES, Mol 파일, fingerprint, Graph 등이 있다
+
+# Descriptors
+>> 2차원 테이블 구조의, 정형화된 특성 테이블을 만들고 각 컬럼(특성)으로 분자량, 용해도, 독성, 3차원 정보, 질량, 극성, 아로마틱 등 분자의 descriptors들을 사용하는 경우이다
+>> 분석 목적에 따라 필요한 특성을 선택(feature selection)하거나 다양한 특성 변환 등 데이터 전처리가 필요하다
+>> 이와 같이 최적의 특성을 준비하는 작업을 특성 공학 (feature engineering)이라고 한다
+
+# SMILES
+>> Simplified Molecular Input Line Entry System
+>> 매우 간편한 분자 표현 방식이다. 알파벳으로 된 원자 기호를 사용한다
+>> Single bonds는 생략하고 double, triple, quadruple bond는 각각 '=', '#', '$' 로 표현한다
+>> 링구조는 시작과 끝 원자에 숫자를 붙인다
+>> 아로마틱 원자는 소문자로 표현한다: b, c, n, o, p, s 등
+
+## SMILES의 장점:
+>> 읽기 쉽고 사람이 작성하기도 쉽다.
+>> 문장처럼, 문자열 처리 방식으로 처리가 가능하다
+>> 단점:
+분자의 공간적인 정보는 표현하지 못한다
+동일한 분자에 대해서도 서로다른 다양한 표현법이 있을 수 있다
+
+# Mol file
+>> SMILES는 한 줄의 스트링(문자열)로 분자를 표현하나, Mol 파일은 분자에 대한 상세한 정보를 텍스트 파일로 상세하게 표현한다: atoms, bonds, connectivity, 좌표정보 등을 포함한다
+>> 장점:
+공간 정보를 포함한다(2D or 3D)
+각 분자에 대해서 동일한 하나의 표현을 갖는다
+>> 단점:
+SMILES에 비해서 표현형의 크기가 크다
+개인이 작성하기 어렵고 필요한 특성 정보를 컴퓨터가 인식하게 하려면 새로운 데이터 처리가 필요하다
+
+# 그래프
+>> 분자를 구성하는 원자와 결합을 노드와 엣지로 표현하는 방식이다
+>> 최근 분자 표현형으로 그래프가 널리 사용되고 머신러닝 모델의 성능을 개선시켰다
+>> 그래프 컨볼류션 네크워크 등 그래프를 지원하는 딥러닝 모델에서 사용된다
+
+# Feature Learning
+>> 분석에 도움이 되는 특성(feature)를 선택하는 작업을 특성 공학(feature engineering)이라고 하며 주로 이 분야의 전문가가 작업하였다
+          >>> 적절한 molecular descriptor를 찾아내는 작업 등
+>> 특성 공학은 시간이 오래 걸리고 어려운 작업이며 작업자마다 결과가 다를 수 있다
+>> 딥러닝 모델은 feature learning을 수행하여 특성 공학과 같은 작업을 대신해준다
+          >>> feature learning을 representation lerning이라고도 부른다
+          >>> 사람의 개입이 아니라 데이터로부터 머신러닝 모델이 특성을 추출하는 것이다
+          >>> 이러한 방식은 이미지 인식, 언어 이해 분야에서 이미 성과를 입증했고 이제 ligand-based virtual screening 등 화학정보학, 생물정보학에도 널리 사용되고 있다
+
+# Coloumb matrices
+>> 분자 특성을 Schrödinger 방정식으로부터 추출할 수 있다는 가정에 출발
+>> 원자 좌표값과 전하량 등을 고려하여 분자의 구조를 표현한다
+>> 장점:
+물리 화학적으로 명확한 표현법을 제공
+>> 단점:
+계산량이 많으며 관련 데이터를 다량 확보하기기 어렵다
+
+# fingerprint
+>> 분자를 구성하는 각 원자의 특성과 결합 등을 기반으로 어떤 '숫자'들을 만들고 이를 주변의 다른 원자들과의 연결 정보를 반복적으로 추가하여 특성을 업데이트 하는 방식이다
+>> 각 분자의 특성을 일정한 길이의 비트 패턴으로 표현한다 (1024, 2048 비트 등)
+>> 크기가 일정한 표현형이라는 장점이 있다
+>> 두 분자의 특성이 유사하다면 fingerprint의 같은 위치의 비트값이 일치하는 수가 많도록 정의하였다
+        >>> 각 비트는 어떤 특징의 존재 여부 또는 하부구조의 존재 여부 등을 나타낸다
+>> Extended Connectivity Fingerprint (ECFP)가 널리 사용된다
+        >>> circular fingerprint라고도 부른다
+>> 이외에도 여러가지 방식의 FP가 연구되었다: 공간정보 이용, 하부구조 반영 등
+>> fingerprint는 분자를 찾는 키와 같은 역할을 한다
+          >>> fingerprint는 Feature Hashing 기법이라고도 부른다
+
+
+<Code>
+
+1. install
+!pip install deepchem
+
+2. 
+import deepchem as dc
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+%matplotlib inline
+
+import seaborn as sns
+from rdkit import Chem
+from rdkit.Chem import Descriptors
+from rdkit.Chem.Draw import IPythonConsole     # 화면에 출력하기 위한 옵션
+IPythonConsole.ipython_useSVG=True
+%config InlineBackend.figure_format = 'retina' # 레티나 디스플레이 사용
+from rdkit.Chem import Draw
+
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
