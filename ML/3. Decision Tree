@@ -1,0 +1,60 @@
+1. 데이터 읽기
+
+import pandas as pd
+
+# sklearn.preprocessing: 데이터 전처리 관련 모듈
+from sklearn.preprocessing import LabelEncoder
+from sklearn import tree
+
+# 그래픽으로 시각화하는 라이브러리
+import graphviz
+
+# 데이터 경로
+file_path='/content/drive/MyDrive/Colab Notebooks/기계학습/PlayTennis.csv'
+# 데이터 경로로부터 파일을 읽음 (pandas 라이브러리 이용)
+datas = pd.read_csv(file_path)
+
+# 데이터 출력 (데이터 형태 확인)
+print(datas)
+
+
+
+2. 데이터 변환
+# 범주형 데이터를 수치형 데이터로 자동 변환해주는 라이브러리(label_encoder)
+label_encoder = LabelEncoder()
+
+# 정답 클래스 이름 (yes or no)
+target_names = label_encoder.fit(datas['play']).classes_
+print('target_names : {}'. format(target_names))
+
+datas['outlook'] = label_encoder.fit_transform(datas['outlook'])
+datas['temp'] = label_encoder.fit_transform(datas['temp'])
+datas['humidity'] = label_encoder.fit_transform(datas['humidity'])
+datas['windy'] = label_encoder.fit_transform(datas['windy'])
+datas['play'] = label_encoder.fit_transform(datas['play'])
+
+# 데이터 출력
+print(datas)
+
+# 입력 데이터와 정답 데이터로 분리
+x_data, y_data = datas.drop(['play'], axis=1), datas['play']
+
+# 분리 결과 확인
+print(x_data)
+print()
+print(y_data)
+
+
+
+3. Decision tree 모델 학습
+decision_tree=tree.DecisionTreeClassifier(criterion = 'entropy')
+train_result = decision_tree.fit(x_data, y_data)
+
+# 학습 결과 확인 (graphviz 라이브러리 사용)
+graph = graphviz.Source(tree.export_graphviz(train_result, out_file=None, feature_names=x_data.columns,class_names=target_names))
+graph
+
+# 학습한 모델을 사용하여 예측
+predict_result = decision_tree.predict(x_data)
+# 예측 결과 출력 (실제 정답을 맞춘 경우 True로 표시됨)
+print(predict_result == y_data)
