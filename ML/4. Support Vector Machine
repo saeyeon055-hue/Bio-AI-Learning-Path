@@ -1,0 +1,105 @@
+1. 데이터 읽기
+
+import numpy as np
+
+file_path = '/content/drive/MyDrive/Colab Notebooks/기계학습/SMSSpamCollection.txt'
+
+# 파일 읽기
+x_data, y_data= [], []
+with open(file_path, 'r', encoding='utf8') as inFile:
+  lines=inFile.readlines()
+
+lines = lines[:100]
+
+for line in lines:
+  line = line.strip().split('\t')
+  sentence, label = line[1], line[0]
+  x_data.append(sentence)
+  y_data.append(label)
+
+print('x_data의 개수 : ' + str(len(x_data)))
+print('y_data의 개수 : ' + str(len(y_data)))
+
+
+
+2. 데이터 변환(문자열 -> 숫자)
+
+import tensorflow as tf
+from tensorflow.keras.preprocessing.text import Tokenizer
+tokenizer=Tokenizer()
+
+# spam, ham 라벨을 대응하는 index로 치환하기위한 딕셔너리
+label2index_dict={'spam':0, 'ham':1}
+
+# indexing 한 데이터를 넣을 리스트 선언
+indexing_x_data, indexing_y_data=[], []
+
+for label in y_data:
+  indexing_y_data.append(label2index_dict[label])
+
+# x_data를 사용하여 딕셔너리 생성
+tokenizer.fit_on_texts(x_data)
+
+# x_data에 있는 각 문장의 단어들을 대응하는 index로 치환하고 그 결과값을 indexing_x_data에 저장
+indexing_x_data=tokenizer.texts_to_sequences(x_data)
+
+print('x_data indexing 하기 전 : ' + str(x_data[0]))
+print('x_data indexing 하기 후 : ' + str(indexing_x_data[0]))
+print('y_data indexing 하기 전 : ' + str(y_data[0]))
+print('y_data indexing 하기 후 : ' + str(indexing_y_data[0]))
+
+
+
+3. SVM 학습
+
+from sklearn.svm import SVC
+# 문장의 길이를 max_length으로 맞춰 변환
+max_length = 60
+for index in range(len(indexing_x_data)):
+  length = len(indexing_x_data[index])
+
+  if(length >max_length):
+    indexing_x_data[index] = indexing_x_Data[index][:max_length]
+  elif(length < max_length):
+    indexing_x_data[index] = indexing_x_data[index] + [0]*(max_length-length)
+
+# 전체 데이터를 9:1의 비율로 나누어 학습 및 평가 데이터로 사용
+number_of_train=int(len(indexing_x_data)*0.9)
+
+train_x=indexing_x_data[:number_of_train]
+train_y=indexing_y_data[:number_of_train]
+test_x=indexing_x_data[number_of_train:]
+test_y=indexing_y_data[number_of_train:]
+
+print('train_x의 개수 : ' + str(len(train_x)))
+print('train_y의 개수 : ' + str(len(train_y)))
+print('test_x의 개수 : ' + str(len(test_x)))
+print('test_y의 개수 : ' + str(len(test_y)))
+
+svm=SVC(kernel='linear', C=1e10)
+svm.fit(train_x,train_y)
+
+
+
+4. SVM 평가
+
+predict =svm.predict(test_x)
+
+correct_count=0
+for index in range(len(predict)):
+  if(test_y[index] == predict[index]):
+    correct_count+=1
+
+accuracy = 100.0*correct_count/len(test_y)
+
+print('Accuracy: ' + str(accuracy))
+
+index2label = {0:'spam', 1:'ham'}
+
+test_x_word = tokenizer.sequences_to_texts(test_x)
+
+for index in range(len(test_x_word)):
+  print()
+  print('문장 : ', test_x_word[index])
+  print('정답 : ', index2label[test_y[index]])
+  print('모델 출력 : ', index2label[predict[index]])
