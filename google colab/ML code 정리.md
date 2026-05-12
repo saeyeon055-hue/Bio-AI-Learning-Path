@@ -129,3 +129,101 @@ for index in range(len(test_x_word)):
 => 대상: 단백질 서열, 약물 복용 순서, 문장처럼 데이터 앞뒤의 순서가 중요할 때 사용
 => 변환: 현재 단어뿐만 아니라 '앞 단어는 뭐였지?', '뒤 단어는 뭐지?'같은 주변 맥락을 추출해서 sent2feature 처럼 복잡한 딕셔너리 만든다.
 => 평가: 하나하나 맞추는 것보다, 전체 시퀀스를 얼마나 완벽하게 맞췄는지, 혹은 특정 개체를 얼마나 잘 찾아냈는지(F1-score) 중요
+
+## 2. 데이터 읽기
+```
+datas = []
+for line in lines:
+  pieces = line.strip().split('\t')
+  eumjeol_sequence, label = pieces[0].split(), pieces[1].split() # pieces[0]: 음절 열, pieces[1]: 레이블
+  datas.append((eumjeol_sequence, label))
+```
+- .split()의 추가 사용: pieces[0]과 pieces[1] 뒤에 .split()이 한 번 더 붙었다. 이는 공백(space)을 기준으로 문자열을 쪼개서 리스트로 만들라는 뜻.
+- 예) .split() 추가 사용 없을 때: eumjeol_sequence: [나 는 사 과 가 좋 아], label: [ NP SBJ OBJ ...]
+-     .split() 추가 사용 할 때: eumjeol_sequence: ['나', '는', '사', '과', '가', '좋', '아'], label: ['NP', 'SBJ', 'OBJ', ...]
+
+## 3. 데이터 변환 (자질 설계)
+```
+import sklearn_crfsuite
+from sklearn_crfsuite import metrics
+```
+
+```
+def sent2feature(eumjeol_sequence):
+  features = []
+  sequence_length = len(eumjeol_sequence)
+  for index, eumjeol in enumerate(eumjeol_sequence):
+```
+- def sent2feature(eumjeol_sequence): sent2feature라는 이름의 함수 생성.
+- sequence_length = len(eumjeol_sequence): 문장의 총 글자 수 확인. 문장의 길이를 알아야 '현재 글자가 마지막 글자인지(EOS)', 혹은 '첫 글자인지(BOS)'를 판단할 수 있기 때문.
+- for index,eumjeol in enumerate(eumjeol_sequence): enumerate는 리스트에서 글자(eumjeol)만 꺼내는 게 아니라, 그 글자가 몇 번째인지 번호(index)까지 세어주는 명령어
+- 예) ['나', '는', '사', '과']라는 리스트가 있다면: 1회전: index=0, eumjeol='나', 2회전: index=1, eumjeol='는' ...
+
+## 4. 데이터 생성
+```
+train_x, train_y = [], []
+for eumjeol_sequence, label in train_datas:
+  train_x.append(sent2feature(eumjeol_sequence))
+  train_y.append(label)
+
+test_x, test_y = [], []
+for eumjeol_sequence, label in test_datas:
+  test_x.append(sent2feature(eumjeol_sequence))
+  test_y.append(label)
+```
+- train_x.append(sent2feature(eumjeol_sequence))
+  test_x.append(sent2feature(eumjeol_sequence)) 여기서 sent2feature가 왜 들어가는가?
+  텍스트를 '특징 세트(사전)'로 변환하기 위해서.
+  예) 변환 전 ['나', '는', '사', '과'] (기계는 이게 뭔지 모름)
+      변환 후(sent2feature 실행 시) '나': {첫글자: True, 글자: '나', 다음글자: '는'}
+                                   '는': {첫글자: False, 글자: '는', 이전글자: '나', 다음글자: '사'}
+
+# CRF 라이브러리는 단순한 글자가 아니라, 딕셔너리 형태의 특징 세트를 입력받도록 설계되어 있음. 그래서 append 하기 전에 반드시 sent2feature 공장을 거쳐서 가공된 데이터를 넣어줘야 함.
+
+## 5. CRF 학습
+```
+crf = sklearn_crfsuite.CRF()
+crf.fit(train_x, train_y)
+```
+
+## 6. CRF 평가
+```
+predict = crf.predict(test_x)
+```
+
+```
+# 1) 수치로 보는 성적표(Accuracy)
+print('Accuracy score : ' + str(metrics.flat_accuracy_score(test_y, predict)))
+print()
+
+# 2) 사람이 눈으로 직접 확인하는 상세 결과(Detail)
+print('10개의 데이터에 대한 모델 출력과 실제 정답 비교')
+print()
+
+
+def show_predict_result(test_datas, predict):
+  for inex_1 in range(len(test_datas)):
+    eumjeol_sequence, correct_labels = test_datas[inex_1]
+    predict_labels = predict[inex_1]
+
+    correct_sentence, predict_sentence = '', ''
+    for index_2 in range(len(eumjeol_sequence)):
+      if (index_2== 0):
+        correct_sentence += eumjeol_sequence[index_2]
+        predict_sentence += eumjeol_sequence[index_2]
+        continue
+
+      if (correct_labels[index_2] == 'B'):
+        correct_sentence += ' '
+      correct_sentence += eumjeol_sequence[index_2]
+
+      if (predict_labels[index_2] == 'B'):
+        predict_sentence += ' '
+      predict_sentence += eumjeol_sequence[index_2]
+
+    print('정답 문장 : ' + correct_sentence)
+    print('예측 문장 : ' + predict_sentence)
+    print()
+
+show_predict_result(test_datas[:10], predict[:10])
+```
